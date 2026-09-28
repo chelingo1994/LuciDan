@@ -1,0 +1,54 @@
+@startuml
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam maxMessageSize 180
+skinparam sequenceArrowThickness 1
+skinparam ArrowColor #632423
+skinparam ArrowFontColor #2B1D14
+skinparam ArrowFontSize 11
+skinparam sequence {
+  ActorBorderColor #632423
+  ActorBackgroundColor #FFF6F0
+  ActorFontColor #2B1D14
+  ParticipantBorderColor #632423
+  ParticipantBackgroundColor #FFF6F0
+  ParticipantFontColor #632423
+  ParticipantFontStyle bold
+  LifeLineBorderColor #8A7A6C
+  LifeLineBackgroundColor #FFF6F0
+  BoxBorderColor #632423
+  BoxFontColor #632423
+  BoxBackgroundColor #FFF9F5
+  DividerBorderColor #632423
+  DividerBackgroundColor #F2E4DE
+  DividerFontColor #632423
+}
+skinparam titleFontColor #632423
+skinparam titleFontSize 18
+skinparam titleFontStyle bold
+skinparam noteBackgroundColor #FFF9E8
+skinparam noteBorderColor #8A7A6C
+
+
+title DS03 — Visualización de la ficha de detalle (HU04)
+autonumber
+actor "Turista / Residente" as U
+participant "HomeScreen" as UI1
+participant "DetalleScreen" as UI2
+participant "DetalleViewModel" as VM
+participant "LugarRepository" as REPO
+database "Base de Datos\n(Room)" as DB
+
+U -> UI1 : tocar marcador de un lugar
+UI1 -> UI2 : navegar a DetalleScreen(lugarId)
+UI2 -> VM : cargarFicha(lugarId)
+VM -> REPO : obtenerLugarPorId(lugarId)
+REPO -> DB : SELECT * FROM lugares WHERE id = lugarId
+DB --> REPO : datos del lugar (fotos, horario, precio)
+REPO --> VM : Lugar
+VM --> UI2 : actualizar estado (ficha)
+UI2 --> U : mostrar ficha de detalle
+
+@enduml

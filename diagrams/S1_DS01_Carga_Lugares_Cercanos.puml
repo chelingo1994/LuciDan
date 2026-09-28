@@ -1,0 +1,55 @@
+@startuml
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam maxMessageSize 180
+skinparam sequenceArrowThickness 1
+skinparam ArrowColor #632423
+skinparam ArrowFontColor #2B1D14
+skinparam ArrowFontSize 11
+skinparam sequence {
+  ActorBorderColor #632423
+  ActorBackgroundColor #FFF6F0
+  ActorFontColor #2B1D14
+  ParticipantBorderColor #632423
+  ParticipantBackgroundColor #FFF6F0
+  ParticipantFontColor #632423
+  ParticipantFontStyle bold
+  LifeLineBorderColor #8A7A6C
+  LifeLineBackgroundColor #FFF6F0
+  BoxBorderColor #632423
+  BoxFontColor #632423
+  BoxBackgroundColor #FFF9F5
+  DividerBorderColor #632423
+  DividerBackgroundColor #F2E4DE
+  DividerFontColor #632423
+}
+skinparam titleFontColor #632423
+skinparam titleFontSize 18
+skinparam titleFontStyle bold
+skinparam noteBackgroundColor #FFF9E8
+skinparam noteBorderColor #8A7A6C
+
+
+title DS01 — Carga de lugares cercanos según el radio (HU01)
+autonumber
+actor "Turista / Residente" as U
+participant "HomeScreen" as UI
+participant "HomeViewModel" as VM
+participant "LugarRepository" as REPO
+participant "LocationService" as GPS
+database "Base de Datos\n(Room)" as DB
+
+U -> UI : abrir pantalla Home
+UI -> GPS : solicitar ubicación actual
+GPS --> UI : latitud, longitud
+UI -> VM : cargarLugaresCercanos(lat, lng, radio)
+VM -> REPO : obtenerLugaresCercanos(lat, lng, radio)
+REPO -> DB : SELECT lugares WHERE distancia <= radio
+DB --> REPO : lista de lugares
+REPO --> VM : lista de lugares
+VM --> UI : actualizar estado (lugares)
+UI --> U : mostrar marcadores en el mapa
+
+@enduml

@@ -1,0 +1,32 @@
+# LUGARES DE LUCIDAN APP - archivo para editar
+#
+# Una línea por lugar. Los campos van separados por | (barra vertical):
+#   nombre | categoria | latitud | longitud | descripcion | horario | rangoPrecio | foto | destacado
+#
+# - categoria: TURISMO, GASTRONOMIA, ACTIVIDADES, EVENTOS o ALOJAMIENTO
+#              (si necesitas otra categoría o rubro, escríbela y la agrego a la app)
+# - latitud y longitud: decimales con PUNTO, negativos en Bermejo (ej: -22.7333 | -64.3417)
+#   Tip: en Google Maps, clic largo sobre el punto y copia las coordenadas que aparecen.
+# - rangoPrecio: texto libre (ej: Gratis, Bs 10 - Bs 40)
+# - foto: déjalo vacío si no hay. Solo "logo_restaurante" y "logo_hotel" existen hoy.
+# - destacado: SI o NO (SI = dispara la notificación de cercanía)
+# - Las líneas que empiezan con # se ignoran. Para borrar un lugar, borra su línea.
+# - Para agregar un lugar, copia una línea y cambia sus datos.
+#
+# ---- LUGARES ACTUALES (corrige las coordenadas que estén mal) ----
+Plaza Principal Narciso Campero | TURISMO | -22.73264 | -64.34273 | Plaza central de Bermejo, punto de encuentro y referencia de la ciudad. | Todo el día | Gratis | | SI
+Costanera del Río Bermejo | TURISMO | -22.7395 | -64.3450 | Paseo junto al río, ideal para caminar y ver el atardecer. | 06:00 - 22:00 | Gratis | | SI
+Mercado Central de Bermejo | GASTRONOMIA | -22.73206 | -64.33724 | Puestos de comida típica y productos frescos de la región. | 07:00 - 18:00 | Bs 10 - Bs 40 | | NO
+Paso de Frontera Aguas Blancas | TURISMO | -22.732424491168242  | -64.34949874883714 | Paso fronterizo entre Bolivia y Argentina sobre el río Bermejo. | 06:00 - 22:00 | Gratis | | NO
+Parque Los Chaguancos | ACTIVIDADES | -22.72723391223682 | -64.3552709398531  | Espacio verde con senderos y áreas de recreación familiar. | 08:00 - 18:00 | Bs 5 | | NO
+Restaurante El Rancho Bermejeño | GASTRONOMIA | -22.7320 | -64.3440 | Comida típica tarijeña y parrillas. | 11:00 - 23:00 | Bs 30 - Bs 80 | logo_restaurante | NO
+Hotel Cristal | ALOJAMIENTO | -22.730828009474468|-64.34321299708054 | Hospedaje céntrico | Recepción 24 h | Bs 150 - Bs 300 | logo_hotel | NO
+Feria Dominical de Bermejo | EVENTOS | -22.73644879222158 | -64.33540410673646 | Feria semanal de artesanías y productos locales. | Domingos 08:00 - 14:00 | Gratis | | NO
+Cancha Polideportivo Municipal | ACTIVIDADES | -22.721832388182875| -64.34741626525599 | Complejo deportivo municipal para fútbol y básquet. | 08:00 - 21:00 | Bs 20 por hora | | NO
+Cabañas Sol de Bermejo | ALOJAMIENTO | -22.7420 | -64.3510 | Cabañas familiares a orillas del río, ideales para descanso. | Recepción 24 h | Bs 200 - Bs 400 | | NO
+Facultad de Ciencias Integradas de Bermejo | ACTIVIDADES | -22.725511694935772 | -64.32607913770349 | Sede de la UAJMS en Bermejo, dentro del Campus Universitario. | Lunes a viernes, horario académico | Gratis | | NO
+#
+# ---- LUGARES NUEVOS (agrégalos debajo, una línea cada uno) ----
+Complejo Polideportivo Bermejo| ACTIVIDADES | -22.735182113622106 | -64.3308666721783 | Complejo deportivo municipal  | 08:00 - 21:00 | Bs 20 por hora | | NO
+La Casona del Mirador Restaurante| GASTRONOMIA | -22.73522375043071 | -64.34528216727612 | Restaurante  | 12:00 - 15:00 | Bs 20 por hora | | NO
+El Mirador | TURISMO | -22.71875712537423 | -64.3440376224104 | Cristo Mirador | 7:00 - 18:00 | Gratis | | NO

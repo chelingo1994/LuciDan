@@ -1,0 +1,68 @@
+@startuml
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam maxMessageSize 180
+skinparam sequenceArrowThickness 1
+skinparam ArrowColor #632423
+skinparam ArrowFontColor #2B1D14
+skinparam ArrowFontSize 11
+skinparam sequence {
+  ActorBorderColor #632423
+  ActorBackgroundColor #FFF6F0
+  ActorFontColor #2B1D14
+  ParticipantBorderColor #632423
+  ParticipantBackgroundColor #FFF6F0
+  ParticipantFontColor #632423
+  ParticipantFontStyle bold
+  LifeLineBorderColor #8A7A6C
+  LifeLineBackgroundColor #FFF6F0
+  BoxBorderColor #632423
+  BoxFontColor #632423
+  BoxBackgroundColor #FFF9F5
+  DividerBorderColor #632423
+  DividerBackgroundColor #F2E4DE
+  DividerFontColor #632423
+}
+skinparam titleFontColor #632423
+skinparam titleFontSize 18
+skinparam titleFontStyle bold
+skinparam noteBackgroundColor #FFF9E8
+skinparam noteBorderColor #8A7A6C
+
+
+title DS06 — Registro e inicio de sesión (HU12)
+autonumber
+actor "Usuario" as U
+participant "RegistroScreen /\nLoginScreen" as UI
+participant "AuthViewModel" as VM
+participant "AuthService" as AUTH
+participant "UsuarioRepository" as REPO
+database "Base de Datos\n(Room)" as DB
+
+alt registro de nuevo usuario
+  U -> UI : ingresar correo y contraseña
+  UI -> VM : registrarse(correo, contrasena)
+  VM -> VM : validar formato de correo\ny contraseña segura
+  VM -> AUTH : cifrarContrasena(contrasena)
+  AUTH --> VM : hash
+  VM -> REPO : crearUsuario(correo, hash)
+  REPO -> DB : INSERT INTO usuarios
+  DB --> REPO : ok
+  REPO --> VM : usuario creado
+  VM --> UI : navegar a Home
+else inicio de sesión
+  U -> UI : ingresar correo y contraseña
+  UI -> VM : iniciarSesion(correo, contrasena)
+  VM -> AUTH : autenticar(correo, contrasena)
+  AUTH -> REPO : buscarPorCorreo(correo)
+  REPO -> DB : SELECT * FROM usuarios WHERE correo = ?
+  DB --> REPO : usuario
+  REPO --> AUTH : usuario (hash almacenado)
+  AUTH -> AUTH : comparar hash
+  AUTH --> VM : sesión válida / inválida
+  VM --> UI : navegar a Home / mostrar error
+end
+
+@enduml

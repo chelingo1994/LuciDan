@@ -1,0 +1,65 @@
+@startuml
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam maxMessageSize 180
+skinparam sequenceArrowThickness 1
+skinparam ArrowColor #632423
+skinparam ArrowFontColor #2B1D14
+skinparam ArrowFontSize 11
+skinparam sequence {
+  ActorBorderColor #632423
+  ActorBackgroundColor #FFF6F0
+  ActorFontColor #2B1D14
+  ParticipantBorderColor #632423
+  ParticipantBackgroundColor #FFF6F0
+  ParticipantFontColor #632423
+  ParticipantFontStyle bold
+  LifeLineBorderColor #8A7A6C
+  LifeLineBackgroundColor #FFF6F0
+  BoxBorderColor #632423
+  BoxFontColor #632423
+  BoxBackgroundColor #FFF9F5
+  DividerBorderColor #632423
+  DividerBackgroundColor #F2E4DE
+  DividerFontColor #632423
+}
+skinparam titleFontColor #632423
+skinparam titleFontSize 18
+skinparam titleFontStyle bold
+skinparam noteBackgroundColor #FFF9E8
+skinparam noteBorderColor #8A7A6C
+
+
+title DS11 — Gestión de roles y permisos (HU14)
+autonumber
+actor "Administrador" as A
+participant "AdminScreen" as UI
+participant "AdminViewModel" as VM
+participant "UsuarioRepository" as REPO
+database "Base de Datos\n(Room)" as DB
+
+A -> UI : abrir panel de administración
+UI -> VM : cargarPanel()
+VM -> VM : validar rol = ADMINISTRADOR
+alt permiso válido
+  VM -> REPO : listarUsuariosYNegocios()
+  REPO -> DB : SELECT * FROM usuarios / negocios
+  DB --> REPO : lista de cuentas
+  REPO --> VM : lista de cuentas
+  VM --> UI : mostrar lista
+  A -> UI : seleccionar cuenta y acción\n(activar / suspender / eliminar)
+  UI -> VM : cambiarEstado(cuentaId, nuevoEstado)
+  VM -> REPO : actualizarEstado(cuentaId, nuevoEstado)
+  REPO -> DB : UPDATE usuarios/negocios SET estado = ?
+  DB --> REPO : ok
+  REPO --> VM : estado actualizado
+  VM --> UI : refrescar lista
+  UI --> A : mostrar cuenta actualizada
+else sin permiso
+  VM --> UI : acceso denegado
+  UI --> A : mostrar mensaje de error
+end
+
+@enduml

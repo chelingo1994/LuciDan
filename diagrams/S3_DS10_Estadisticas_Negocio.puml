@@ -1,0 +1,63 @@
+@startuml
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam maxMessageSize 180
+skinparam sequenceArrowThickness 1
+skinparam ArrowColor #632423
+skinparam ArrowFontColor #2B1D14
+skinparam ArrowFontSize 11
+skinparam sequence {
+  ActorBorderColor #632423
+  ActorBackgroundColor #FFF6F0
+  ActorFontColor #2B1D14
+  ParticipantBorderColor #632423
+  ParticipantBackgroundColor #FFF6F0
+  ParticipantFontColor #632423
+  ParticipantFontStyle bold
+  LifeLineBorderColor #8A7A6C
+  LifeLineBackgroundColor #FFF6F0
+  BoxBorderColor #632423
+  BoxFontColor #632423
+  BoxBackgroundColor #FFF9F5
+  DividerBorderColor #632423
+  DividerBackgroundColor #F2E4DE
+  DividerFontColor #632423
+}
+skinparam titleFontColor #632423
+skinparam titleFontSize 18
+skinparam titleFontStyle bold
+skinparam noteBackgroundColor #FFF9E8
+skinparam noteBorderColor #8A7A6C
+
+
+title DS10 — Registro y consulta de estadísticas (HU11)
+autonumber
+actor "Turista / Residente" as T
+actor "Dueño de Negocio" as N
+participant "DetalleScreen" as UID
+participant "PanelEstadisticasScreen" as UIN
+participant "EstadisticaViewModel" as VM
+participant "EstadisticaRepository" as REPO
+database "Base de Datos\n(Room)" as DB
+
+== Registro de eventos ==
+T -> UID : ver ficha del negocio
+UID -> REPO : registrarEvento(negocioId, "VISTA")
+REPO -> DB : INSERT INTO estadisticas_negocio
+T -> UID : tocar "Cómo llegar"
+UID -> REPO : registrarEvento(negocioId, "CLIC_COMO_LLEGAR")
+REPO -> DB : INSERT INTO estadisticas_negocio
+
+== Consulta del panel ==
+N -> UIN : abrir panel de estadísticas
+UIN -> VM : cargarResumen(negocioId, periodo)
+VM -> REPO : obtenerConteo(negocioId, periodo)
+REPO -> DB : SELECT tipo, COUNT(*) FROM estadisticas_negocio\nWHERE negocio_id = ? AND fecha BETWEEN ...
+DB --> REPO : conteos por tipo
+REPO --> VM : vistas, clics
+VM --> UIN : actualizar estado
+UIN --> N : mostrar contador de vistas y clics
+
+@enduml

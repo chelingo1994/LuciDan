@@ -1,0 +1,139 @@
+@startuml
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam classFontColor #2B1D14
+skinparam classFontSize 13
+skinparam classBorderColor #632423
+skinparam classBackgroundColor #FFF6F0
+skinparam classAttributeFontColor #2B1D14
+skinparam classAttributeFontSize 11
+skinparam ArrowColor #8A7A6C
+skinparam ArrowFontColor #632423
+skinparam ArrowFontSize 11
+skinparam titleFontColor #632423
+skinparam titleFontSize 20
+skinparam titleFontStyle bold
+
+
+title
+Diagrama de Clases — LuciDan App
+Modelo de dominio, Sprints 1-3
+end title
+
+class Usuario {
+  -id: Long
+  -correo: String
+  -contrasenaHash: String
+  -fechaRegistro: Date
+  -rol: RolUsuario
+  -notificacionesActivas: Boolean
+  +registrarse()
+  +iniciarSesion()
+  +recuperarContrasena()
+}
+
+enum RolUsuario {
+  TURISTA
+  NEGOCIO
+  ADMINISTRADOR
+}
+
+class Lugar {
+  -id: Long
+  -nombre: String
+  -categoria: String
+  -latitud: Double
+  -longitud: Double
+  -descripcion: String
+  -horario: String
+  -rangoPrecio: String
+  -fotos: List<String>
+  -promedioCalificacion: Double
+  +calcularDistancia(origen)
+}
+
+class Resena {
+  -id: Long
+  -calificacion: Int
+  -comentario: String
+  -fecha: Date
+  +guardar()
+}
+
+class Favorito {
+  -id: Long
+  -fechaGuardado: Date
+}
+
+class Negocio {
+  -id: Long
+  -nombre: String
+  -categoria: String
+  -ubicacion: String
+  -horario: String
+  -fotos: List<String>
+  -estado: EstadoNegocio
+  -destacado: Boolean
+  +registrar()
+  +editarPerfil()
+}
+
+enum EstadoNegocio {
+  PENDIENTE
+  PUBLICADO
+  SUSPENDIDO
+}
+
+class PlanPublicidad {
+  -id: Long
+  -nombre: String
+  -duracionDias: Int
+  -precio: Decimal
+  -beneficios: String
+}
+
+class ContratacionPublicidad {
+  -id: Long
+  -fechaInicio: Date
+  -fechaVencimiento: Date
+  -activo: Boolean
+  +calcularVencimiento()
+}
+
+class EstadisticaNegocio {
+  -id: Long
+  -tipo: TipoEvento
+  -fecha: Date
+}
+
+enum TipoEvento {
+  VISTA
+  CLIC_COMO_LLEGAR
+}
+
+Usuario "1" *-- "1" RolUsuario
+Usuario "1" -- "0..*" Resena : escribe >
+Usuario "1" -- "0..*" Favorito : guarda >
+Favorito "0..*" -- "1" Lugar
+Lugar "1" -- "0..*" Resena : recibe >
+Usuario "1" -- "0..1" Negocio : posee >
+Negocio "1" *-- "1" EstadoNegocio
+Negocio "1" -- "0..*" ContratacionPublicidad : contrata >
+PlanPublicidad "1" -- "0..*" ContratacionPublicidad
+Negocio "1" -- "0..*" EstadisticaNegocio : genera >
+EstadisticaNegocio "1" *-- "1" TipoEvento
+
+legend right
+  |= Historia |= Clase |
+  | HU01/HU04 | Lugar |
+  | HU06 | Resena |
+  | HU07 | Favorito |
+  | HU08/HU09 | Negocio |
+  | HU10 | PlanPublicidad, ContratacionPublicidad |
+  | HU11 | EstadisticaNegocio |
+  | HU12/HU14 | Usuario, RolUsuario |
+endlegend
+
+@enduml
