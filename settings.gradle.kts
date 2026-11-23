@@ -19,6 +19,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // osmbonuspack (agrupación de marcadores) solo se publica en JitPack.
+        maven("https://jitpack.io") {
+            content { includeGroup("com.github.MKergall") }
+        }
     }
 }
 

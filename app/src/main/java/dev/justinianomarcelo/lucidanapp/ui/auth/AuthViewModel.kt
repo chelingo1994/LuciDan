@@ -77,7 +77,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 correo = correo,
                 contrasenaHash = hash,
                 fechaRegistro = Date(),
-                rol = RolUsuario.TURISTA,
+                rol = RolUsuario.VISITANTE,
                 notificacionesActivas = true
             )
             val id = usuarioRepository.crearUsuario(nuevoUsuario)

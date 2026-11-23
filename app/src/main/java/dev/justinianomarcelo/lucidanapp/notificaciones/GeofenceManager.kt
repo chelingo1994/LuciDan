@@ -8,10 +8,10 @@ import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
-import dev.justinianomarcelo.lucidanapp.data.model.Lugar
+import dev.justinianomarcelo.lucidanapp.data.model.Negocio
 
 /**
- * Registra geocercas alrededor de los lugares destacados para disparar la
+ * Registra geocercas alrededor de los negocios destacados para disparar la
  * detección de cercanía descrita en DS08 (GeofenceManager).
  */
 class GeofenceManager(private val context: Context) {
@@ -28,12 +28,12 @@ class GeofenceManager(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    fun registrarGeocercas(lugares: List<Lugar>, radioMetros: Float = 300f) {
-        if (lugares.isEmpty()) return
-        val geocercas = lugares.map { lugar ->
+    fun registrarGeocercas(negocios: List<Negocio>, radioMetros: Float = 300f) {
+        if (negocios.isEmpty()) return
+        val geocercas = negocios.map { negocio ->
             Geofence.Builder()
-                .setRequestId(lugar.id.toString())
-                .setCircularRegion(lugar.latitud, lugar.longitud, radioMetros)
+                .setRequestId(negocio.id.toString())
+                .setCircularRegion(negocio.latitud, negocio.longitud, radioMetros)
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
                 .build()

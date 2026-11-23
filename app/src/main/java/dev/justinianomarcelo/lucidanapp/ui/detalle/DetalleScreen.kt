@@ -1,5 +1,7 @@
 package dev.justinianomarcelo.lucidanapp.ui.detalle
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import dev.justinianomarcelo.lucidanapp.util.FotoNegocioImagen
@@ -30,7 +32,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Phone
+import dev.justinianomarcelo.lucidanapp.util.Contacto
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
@@ -76,7 +81,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.justinianomarcelo.lucidanapp.data.model.Lugar
 import dev.justinianomarcelo.lucidanapp.data.model.Resena
 import dev.justinianomarcelo.lucidanapp.ruta.ResultadoRuta
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -91,7 +95,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleScreen(
-    lugarId: Long,
+    negocioId: Long,
     onVolver: () -> Unit,
     onRequiereSesion: () -> Unit,
     viewModel: DetalleViewModel = viewModel()
@@ -99,8 +103,9 @@ fun DetalleScreen(
     val estado = viewModel.uiState
     val snackbarHostState = remember { SnackbarHostState() }
     var mapaCompletoVisible by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
-    LaunchedEffect(lugarId) { viewModel.cargarFicha(lugarId) }
+    LaunchedEffect(negocioId) { viewModel.cargarFicha(negocioId) }
 
     LaunchedEffect(estado.mensaje) {
         estado.mensaje?.let {
@@ -140,18 +145,18 @@ fun DetalleScreen(
             )
         }
     ) { paddingValues ->
-        if (estado.cargando || estado.lugar == null) {
+        if (estado.cargando || estado.negocio == null) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
             ) {
-                if (estado.cargando) CircularProgressIndicator() else Text("Lugar no encontrado")
+                if (estado.cargando) CircularProgressIndicator() else Text("Negocio no encontrado")
             }
             return@Scaffold
         }
 
-        val lugar = estado.lugar
+        val negocio = estado.negocio
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -160,16 +165,17 @@ fun DetalleScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             FotoNegocioImagen(
-                valor = lugar.fotos.firstOrNull(),
-                contentDescription = "Foto de ${lugar.nombre}",
+                valor = negocio.fotos.firstOrNull(),
+                contentDescription = "Foto de ${negocio.nombre}",
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp)
                     .padding(top = 12.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(16.dp)),
+                rubro = negocio.categoria
             )
             Text(
-                lugar.nombre,
+                negocio.nombre,
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.padding(top = 20.dp)
             )
@@ -180,7 +186,7 @@ fun DetalleScreen(
             ) {
                 Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
                     Text(
-                        lugar.categoria.etiqueta,
+                        negocio.categoria.etiqueta,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
@@ -192,18 +198,36 @@ fun DetalleScreen(
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(16.dp)
                 )
-                Text("%.1f".format(lugar.promedioCalificacion), style = MaterialTheme.typography.labelLarge)
+                Text("%.1f".format(negocio.promedioCalificacion), style = MaterialTheme.typography.labelLarge)
             }
             Text(
-                lugar.descripcion,
+                negocio.descripcion,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(top = 16.dp)
             )
 
-            Card(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+            ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FilaDato(Icons.Filled.Schedule, "Horario", lugar.horario)
-                    FilaDato(Icons.Filled.Payments, "Precio", lugar.rangoPrecio)
+                    FilaDato(Icons.Filled.Schedule, "Horario", negocio.horario)
+                    if (negocio.direccion.isNotBlank()) FilaDato(Icons.Filled.Place, "Dirección", negocio.direccion)
+                }
+            }
+
+            if (negocio.telefono.isNotBlank()) {
+                val esCelular = Contacto.esCelular(negocio.telefono)
+                OutlinedButton(
+                    onClick = { Contacto.contactar(context, negocio.telefono) },
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(56.dp)
+                ) {
+                    Icon(if (esCelular) Icons.AutoMirrored.Filled.Chat else Icons.Filled.Phone, contentDescription = null)
+                    Text(
+                        (if (esCelular) "WhatsApp · " else "Llamar · ") + negocio.telefono,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                 }
             }
 
@@ -211,7 +235,7 @@ fun DetalleScreen(
                 onClick = viewModel::trazarRuta,
                 enabled = !estado.calculandoRuta,
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth().padding(top = 24.dp).height(56.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = if (negocio.telefono.isNotBlank()) 12.dp else 24.dp).height(56.dp)
             ) {
                 if (estado.calculandoRuta) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
@@ -225,7 +249,7 @@ fun DetalleScreen(
             estado.ruta?.let { ruta ->
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         ResumenRuta(ruta)
@@ -236,7 +260,12 @@ fun DetalleScreen(
                                 .height(200.dp)
                                 .clip(RoundedCornerShape(16.dp))
                         ) {
-                            MapaRuta(modifier = Modifier.fillMaxSize(), lugar = lugar, ruta = ruta)
+                            MapaRuta(
+                                modifier = Modifier.fillMaxSize(),
+                                destino = GeoPoint(negocio.latitud, negocio.longitud),
+                                nombreDestino = negocio.nombre,
+                                ruta = ruta
+                            )
                             // El mini-mapa vive dentro del scroll de la pantalla, así que
                             // no puede ganarle el gesto de pellizco al scroll: se toca
                             // para abrirlo en pantalla completa, donde sí se puede hacer
@@ -244,14 +273,14 @@ fun DetalleScreen(
                             Box(
                                 modifier = Modifier
                                     .matchParentSize()
-                                    .clickable { mapaCompletoVisible = true }
+                                    .clickable(onClickLabel = "Ampliar el mapa de la ruta", role = Role.Button) { mapaCompletoVisible = true }
                             )
                             Surface(
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
                                     .padding(8.dp),
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surface,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 shadowElevation = 4.dp
                             ) {
                                 Row(
@@ -288,7 +317,7 @@ fun DetalleScreen(
 
             if (estado.resenas.isEmpty()) {
                 Text(
-                    "Aún no hay reseñas para este lugar.",
+                    "Aún no hay reseñas para este negocio.",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(vertical = 12.dp)
                 )
@@ -303,8 +332,8 @@ fun DetalleScreen(
 
     if (mapaCompletoVisible) {
         val ruta = estado.ruta
-        val lugar = estado.lugar
-        if (ruta != null && lugar != null) {
+        val negocio = estado.negocio
+        if (ruta != null && negocio != null) {
             Dialog(
                 onDismissRequest = { mapaCompletoVisible = false },
                 properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -314,12 +343,17 @@ fun DetalleScreen(
                         // Aquí el mapa es la única superficie con gestos de la pantalla
                         // (no hay ningún scroll compitiendo), así que el pellizco para
                         // zoom y el arrastre funcionan de forma nativa con osmdroid.
-                        MapaRuta(modifier = Modifier.fillMaxSize(), lugar = lugar, ruta = ruta)
+                        MapaRuta(
+                            modifier = Modifier.fillMaxSize(),
+                            destino = GeoPoint(negocio.latitud, negocio.longitud),
+                            nombreDestino = negocio.nombre,
+                            ruta = ruta
+                        )
 
                         Surface(
                             modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             shadowElevation = 6.dp
                         ) {
                             IconButton(onClick = { mapaCompletoVisible = false }) {
@@ -334,10 +368,11 @@ fun DetalleScreen(
                                 .fillMaxWidth()
                                 .navigationBarsPadding()
                                 .padding(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(lugar.nombre, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                                Text(negocio.nombre, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                                 Box(modifier = Modifier.padding(top = 8.dp)) { ResumenRuta(ruta) }
                             }
                         }
@@ -351,9 +386,10 @@ fun DetalleScreen(
 /**
  * Mini-mapa con la ruta caminando resuelta por OSRM (DS04, ver CLAUDE.md
  * sección 2.1). Reemplaza al GoogleMap + Polyline de Maps Compose.
+ * Recibe el destino como punto genérico.
  */
 @Composable
-private fun MapaRuta(modifier: Modifier = Modifier, lugar: Lugar, ruta: ResultadoRuta) {
+internal fun MapaRuta(modifier: Modifier = Modifier, destino: GeoPoint, nombreDestino: String, ruta: ResultadoRuta) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val colorRuta = MaterialTheme.colorScheme.primary.toArgb()
@@ -385,7 +421,6 @@ private fun MapaRuta(modifier: Modifier = Modifier, lugar: Lugar, ruta: Resultad
         factory = { mapView },
         update = { vista ->
             vista.overlays.clear()
-            val destino = GeoPoint(lugar.latitud, lugar.longitud)
 
             if (ruta.puntos.isNotEmpty()) {
                 vista.overlays.add(
@@ -398,7 +433,7 @@ private fun MapaRuta(modifier: Modifier = Modifier, lugar: Lugar, ruta: Resultad
                     }
                 )
             }
-            vista.overlays.add(Marker(vista).apply { position = destino; title = lugar.nombre })
+            vista.overlays.add(Marker(vista).apply { position = destino; title = nombreDestino })
             ruta.puntos.firstOrNull()?.let { origen ->
                 vista.overlays.add(Marker(vista).apply { position = origen; title = "Tu ubicación" })
             }
@@ -416,7 +451,7 @@ private fun MapaRuta(modifier: Modifier = Modifier, lugar: Lugar, ruta: Resultad
 
 /** Distancia y duración de la ruta: el valor destaca, la etiqueta acompaña. */
 @Composable
-private fun ResumenRuta(ruta: ResultadoRuta) {
+internal fun ResumenRuta(ruta: ResultadoRuta) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
             Icon(
@@ -438,7 +473,7 @@ private fun ResumenRuta(ruta: ResultadoRuta) {
 }
 
 @Composable
-private fun FilaDato(icono: androidx.compose.ui.graphics.vector.ImageVector, etiqueta: String, valor: String) {
+internal fun FilaDato(icono: androidx.compose.ui.graphics.vector.ImageVector, etiqueta: String, valor: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Icon(icono, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
         Column {
@@ -461,10 +496,11 @@ private fun FormularioResena(
         Row {
             for (estrella in 1..5) {
                 IconButton(onClick = { onCalificacionSeleccionada(estrella) }) {
+                    val marcada = estrella <= calificacionSeleccionada
                     Icon(
-                        imageVector = if (estrella <= calificacionSeleccionada) Icons.Filled.Star else Icons.Outlined.Star,
-                        contentDescription = "Calificar con $estrella estrellas",
-                        tint = MaterialTheme.colorScheme.primary
+                        imageVector = if (marcada) Icons.Filled.Star else Icons.Filled.StarBorder,
+                        contentDescription = "Calificar con $estrella ${if (estrella == 1) "estrella" else "estrellas"}",
+                        tint = if (marcada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -494,9 +530,9 @@ private fun FilaResena(resena: Resena) {
         Row {
             repeat(5) { indice ->
                 Icon(
-                    imageVector = if (indice < resena.calificacion) Icons.Filled.Star else Icons.Outlined.Star,
+                    imageVector = if (indice < resena.calificacion) Icons.Filled.Star else Icons.Filled.StarBorder,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = if (indice < resena.calificacion) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
                 )
             }

@@ -43,7 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun FavoritosScreen(
     onVolver: () -> Unit,
-    onLugarClick: (Long) -> Unit,
+    onNegocioClick: (Long) -> Unit,
     viewModel: FavoritosViewModel = viewModel()
 ) {
     val estado = viewModel.uiState
@@ -62,7 +62,7 @@ fun FavoritosScreen(
             )
         }
     ) { paddingValues ->
-        if (estado.lugares.isEmpty() && !estado.cargando) {
+        if (estado.negocios.isEmpty() && !estado.cargando) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 32.dp),
                 verticalArrangement = Arrangement.Center,
@@ -88,7 +88,7 @@ fun FavoritosScreen(
                     modifier = Modifier.padding(top = 24.dp)
                 )
                 Text(
-                    "Toca el corazón en la ficha de un negocio o lugar para guardarlo aquí y encontrarlo rápido.",
+                    "Toca el corazón en la ficha de un negocio para guardarlo aquí y encontrarlo rápido.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -110,11 +110,11 @@ fun FavoritosScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(estado.lugares) { lugar ->
+            items(estado.negocios) { negocio ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onLugarClick(lugar.id) },
+                        .clickable { onNegocioClick(negocio.id) },
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Row(
@@ -122,9 +122,9 @@ fun FavoritosScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(lugar.nombre, style = MaterialTheme.typography.titleMedium)
+                            Text(negocio.nombre, style = MaterialTheme.typography.titleMedium)
                             Text(
-                                lugar.categoria.etiqueta,
+                                negocio.categoria.etiqueta,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 4.dp)
@@ -140,7 +140,7 @@ fun FavoritosScreen(
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
                             )
-                            Text("%.1f".format(lugar.promedioCalificacion), style = MaterialTheme.typography.labelLarge)
+                            Text("%.1f".format(negocio.promedioCalificacion), style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }

@@ -1,9 +1,10 @@
 package dev.justinianomarcelo.lucidanapp.data.local
 
 import androidx.room.TypeConverter
-import dev.justinianomarcelo.lucidanapp.data.model.CategoriaLugar
+import dev.justinianomarcelo.lucidanapp.data.model.Rubro
 import dev.justinianomarcelo.lucidanapp.data.model.EstadoNegocio
 import dev.justinianomarcelo.lucidanapp.data.model.RolUsuario
+import dev.justinianomarcelo.lucidanapp.data.model.TipoEvento
 import java.util.Date
 
 class Converters {
@@ -21,16 +22,22 @@ class Converters {
     fun toRolUsuario(valor: String): RolUsuario = RolUsuario.valueOf(valor)
 
     @TypeConverter
-    fun fromCategoriaLugar(categoria: CategoriaLugar): String = categoria.name
+    fun fromRubro(categoria: Rubro): String = categoria.name
 
     @TypeConverter
-    fun toCategoriaLugar(valor: String): CategoriaLugar = CategoriaLugar.valueOf(valor)
+    fun toRubro(valor: String): Rubro = Rubro.valueOf(valor)
 
     @TypeConverter
     fun fromEstadoNegocio(estado: EstadoNegocio): String = estado.name
 
     @TypeConverter
     fun toEstadoNegocio(valor: String): EstadoNegocio = EstadoNegocio.valueOf(valor)
+
+    @TypeConverter
+    fun fromTipoEvento(tipo: TipoEvento): String = tipo.name
+
+    @TypeConverter
+    fun toTipoEvento(valor: String): TipoEvento = TipoEvento.valueOf(valor)
 
     @TypeConverter
     fun fromFotos(fotos: List<String>): String = fotos.joinToString("|")

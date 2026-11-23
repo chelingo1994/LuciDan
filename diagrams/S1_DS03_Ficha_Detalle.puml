@@ -32,23 +32,35 @@ skinparam noteBackgroundColor #FFF9E8
 skinparam noteBorderColor #8A7A6C
 
 
-title DS03 — Visualización de la ficha de detalle (HU04)
+title DS03 — Visualización de la ficha de un negocio (HU04)
 autonumber
-actor "Turista / Residente" as U
+actor "Visitante / Residente" as U
 participant "HomeScreen" as UI1
 participant "DetalleScreen" as UI2
 participant "DetalleViewModel" as VM
-participant "LugarRepository" as REPO
+participant "NegocioRepository" as REPO
 database "Base de Datos\n(Room)" as DB
+participant "Contacto\n(util)" as CTC
+participant "WhatsApp /\nMarcador" as EXT
 
-U -> UI1 : tocar marcador de un lugar
-UI1 -> UI2 : navegar a DetalleScreen(lugarId)
-UI2 -> VM : cargarFicha(lugarId)
-VM -> REPO : obtenerLugarPorId(lugarId)
-REPO -> DB : SELECT * FROM lugares WHERE id = lugarId
-DB --> REPO : datos del lugar (fotos, horario, precio)
-REPO --> VM : Lugar
+U -> UI1 : tocar marcador de un negocio
+UI1 -> UI2 : navegar a DetalleScreen(negocioId)
+UI2 -> VM : cargarFicha(negocioId)
+VM -> REPO : obtenerNegocioPorId(negocioId)
+REPO -> DB : SELECT * FROM negocios WHERE id = negocioId
+DB --> REPO : datos del negocio (qué vende, fotos,\nhorario, teléfono, dirección)
+REPO --> VM : Negocio
 VM --> UI2 : actualizar estado (ficha)
-UI2 --> U : mostrar ficha de detalle
+UI2 --> U : mostrar ficha con descripción, fotos, horario\ny botón "WhatsApp · número" o "Llamar · número"\n(el botón no aparece si no hay teléfono)
+
+opt el usuario toca el botón de contacto
+  U -> UI2 : tocar "WhatsApp" o "Llamar"
+  UI2 -> CTC : abrir(telefono)
+  alt celular boliviano (8 dígitos, empieza con 6 o 7)
+    CTC -> EXT : abrir chat https://wa.me/591XXXXXXXX
+  else fijo o WhatsApp no instalado
+    CTC -> EXT : abrir el marcador del teléfono
+  end
+end
 
 @enduml

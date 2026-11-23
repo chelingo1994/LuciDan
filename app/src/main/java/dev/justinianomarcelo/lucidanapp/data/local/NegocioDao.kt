@@ -4,6 +4,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
+import dev.justinianomarcelo.lucidanapp.data.model.EstadoNegocio
 import dev.justinianomarcelo.lucidanapp.data.model.Negocio
 
 @Dao
@@ -15,6 +17,37 @@ interface NegocioDao {
     @Update
     suspend fun actualizar(negocio: Negocio)
 
-    @Query("SELECT * FROM negocios WHERE usuarioId = :usuarioId LIMIT 1")
-    suspend fun obtenerPorUsuario(usuarioId: Long): Negocio?
+    /** Upsert (UPDATE, no REPLACE) para no disparar el CASCADE sobre contrataciones y estadísticas. */
+    @Upsert
+    suspend fun upsertar(negocios: List<Negocio>)
+
+    @Query("SELECT * FROM negocios WHERE duenoId = :duenoId ORDER BY id")
+    suspend fun obtenerPorDueno(duenoId: String): List<Negocio>
+
+    @Query("DELETE FROM negocios WHERE id IN (:ids)")
+    suspend fun eliminarPorIds(ids: List<Long>)
+
+    @Query("SELECT * FROM negocios WHERE id = :id")
+    suspend fun obtenerPorId(id: Long): Negocio?
+
+    /** HU01/HU02: negocios visibles en el mapa (solo PUBLICADO, sección 2.2 de CLAUDE.md). */
+    @Query("SELECT * FROM negocios WHERE estado = :estado")
+    suspend fun obtenerPorEstado(estado: EstadoNegocio): List<Negocio>
+
+    @Query("UPDATE negocios SET promedioCalificacion = :promedio WHERE id = :negocioId")
+    suspend fun actualizarPromedio(negocioId: Long, promedio: Double)
+
+    /** DS09: prioridad en los resultados mientras el plan de publicidad esté activo (HU10). */
+    @Query("UPDATE negocios SET destacado = :destacado WHERE id = :negocioId")
+    suspend fun actualizarEstadoDestacado(negocioId: Long, destacado: Boolean)
+
+    /** DS11 (HU14): panel de administración. */
+    @Query("SELECT * FROM negocios")
+    suspend fun obtenerTodos(): List<Negocio>
+
+    @Query("UPDATE negocios SET estado = :estado WHERE id = :negocioId")
+    suspend fun actualizarEstado(negocioId: Long, estado: EstadoNegocio)
+
+    @Query("DELETE FROM negocios WHERE id = :negocioId")
+    suspend fun eliminar(negocioId: Long)
 }

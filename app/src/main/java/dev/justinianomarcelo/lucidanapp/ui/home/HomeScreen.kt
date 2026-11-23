@@ -1,5 +1,17 @@
 package dev.justinianomarcelo.lucidanapp.ui.home
 
+import dev.justinianomarcelo.lucidanapp.ui.theme.PreferenciaTema
+import dev.justinianomarcelo.lucidanapp.ui.theme.ModoTema
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -7,20 +19,36 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -32,6 +60,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -69,9 +98,13 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.justinianomarcelo.lucidanapp.auth.SessionManager
-import dev.justinianomarcelo.lucidanapp.data.model.CategoriaLugar
-import dev.justinianomarcelo.lucidanapp.data.model.Lugar
+import dev.justinianomarcelo.lucidanapp.data.model.Rubro
+import dev.justinianomarcelo.lucidanapp.data.model.Negocio
+import dev.justinianomarcelo.lucidanapp.data.model.RolUsuario
 import dev.justinianomarcelo.lucidanapp.util.BermejoZona
+import dev.justinianomarcelo.lucidanapp.util.FotoNegocioImagen
+import dev.justinianomarcelo.lucidanapp.util.color
+import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.launch
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -79,6 +112,7 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.bonuspack.clustering.RadiusMarkerClusterer
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import kotlin.math.roundToInt
@@ -86,9 +120,10 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onLugarClick: (Long) -> Unit,
+    onNegocioClick: (Long) -> Unit,
     onIrAFavoritos: () -> Unit,
     onIrAMiNegocio: () -> Unit,
+    onIrAAdmin: () -> Unit,
     onCerrarSesion: () -> Unit,
     viewModel: HomeViewModel = viewModel()
 ) {
@@ -98,6 +133,7 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var menuAbierto by remember { mutableStateOf(false) }
+    var dialogoTemaAbierto by remember { mutableStateOf(false) }
 
     var tienePermisoUbicacion by remember {
         mutableStateOf(
@@ -111,12 +147,12 @@ fun HomeScreen(
     ) { resultados ->
         tienePermisoUbicacion = resultados[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             resultados[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        viewModel.cargarLugaresCercanos()
+        viewModel.cargarNegociosCercanos()
     }
 
     LaunchedEffect(Unit) {
         if (tienePermisoUbicacion) {
-            viewModel.cargarLugaresCercanos()
+            viewModel.cargarNegociosCercanos()
         } else {
             val permisos = mutableListOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
@@ -160,7 +196,7 @@ fun HomeScreen(
                             onClick = { menuAbierto = false; onIrAFavoritos() }
                         )
                         DropdownMenuItem(
-                            text = { Text("Mi negocio") },
+                            text = { Text("Mis negocios") },
                             leadingIcon = { Icon(Icons.Filled.Storefront, contentDescription = null) },
                             onClick = { menuAbierto = false; onIrAMiNegocio() }
                         )
@@ -178,6 +214,18 @@ fun HomeScreen(
                                 scope.launch { viewModel.alternarNotificaciones() }
                             }
                         )
+                        if (usuario?.rol == RolUsuario.ADMINISTRADOR) {
+                            DropdownMenuItem(
+                                text = { Text("Administración") },
+                                leadingIcon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = null) },
+                                onClick = { menuAbierto = false; onIrAAdmin() }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Tema: ${PreferenciaTema.modo.etiqueta}") },
+                            leadingIcon = { Icon(Icons.Filled.Palette, contentDescription = null) },
+                            onClick = { menuAbierto = false; dialogoTemaAbierto = true }
+                        )
                         HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text("Cerrar sesión", color = MaterialTheme.colorScheme.error) },
@@ -191,23 +239,34 @@ fun HomeScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                MapaLugares(
+        // El mapa ocupa toda la pantalla y la lista vive en una hoja inferior que se pliega: así los
+        // resultados no le quitan espacio ni toques al mapa (basta con arrastrarla hacia abajo).
+        BottomSheetScaffold(
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
+            sheetPeekHeight = ALTURA_HOJA_PLEGADA,
+            sheetContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            sheetContent = {
+                ListaNegociosCercanos(
+                    negocios = estado.negocios,
+                    origenLat = estado.puntoSeleccionadoManual?.latitude ?: estado.ubicacionActual?.latitud,
+                    origenLng = estado.puntoSeleccionadoManual?.longitude ?: estado.ubicacionActual?.longitud,
+                    onNegocioClick = onNegocioClick,
+                    consulta = estado.consulta,
+                    busquedaAmpliada = estado.busquedaAmpliada,
+                    onAmpliarBusqueda = viewModel::onAmpliarBusqueda
+                )
+            }
+        ) { espacioHoja ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                MapaNegocios(
                     modifier = Modifier.fillMaxSize(),
                     centro = centroMapa,
-                    lugares = estado.lugares,
+                    negocios = estado.negocios,
+                    seleccionadoId = viewModel.negocioSeleccionadoId,
+                    onSeleccionar = viewModel::onNegocioSeleccionado,
                     puntoSeleccionadoManual = estado.puntoSeleccionadoManual,
                     tienePermisoUbicacion = tienePermisoUbicacion,
-                    onLugarClick = onLugarClick,
+                    onNegocioClick = onNegocioClick,
                     onMapLongClick = viewModel::recalcularDesdePunto
                 )
 
@@ -217,16 +276,22 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .padding(12.dp),
                     shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                     shadowElevation = 6.dp
                 ) {
                     Column(modifier = Modifier.padding(vertical = 12.dp)) {
+                        CampoBusqueda(
+                            consulta = estado.consulta,
+                            onConsultaCambiada = viewModel::onConsultaCambiada,
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                        Spacer(modifier = Modifier.padding(top = 8.dp))
                         SelectorDeRadio(
                             radioSeleccionado = estado.radioSeleccionado,
                             onRadioSeleccionado = viewModel::onRadioSeleccionado
                         )
                         Spacer(modifier = Modifier.padding(top = 8.dp))
-                        SelectorDeCategoria(
+                        SelectorDeRubro(
                             categoriaSeleccionada = estado.categoriaSeleccionada,
                             onCategoriaSeleccionada = viewModel::onCategoriaSeleccionada
                         )
@@ -237,6 +302,7 @@ fun HomeScreen(
                     Surface(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
+                            .padding(espacioHoja)
                             .padding(12.dp),
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.primary,
@@ -262,16 +328,44 @@ fun HomeScreen(
                     }
                 }
             }
-
-            ListaLugaresCercanos(
-                lugares = estado.lugares,
-                origenLat = estado.puntoSeleccionadoManual?.latitude ?: estado.ubicacionActual?.latitud,
-                origenLng = estado.puntoSeleccionadoManual?.longitude ?: estado.ubicacionActual?.longitud,
-                onLugarClick = onLugarClick
-            )
         }
     }
+    if (dialogoTemaAbierto) {
+        DialogoTema(
+            modoActual = PreferenciaTema.modo,
+            onElegir = { PreferenciaTema.cambiar(context, it); dialogoTemaAbierto = false },
+            onCerrar = { dialogoTemaAbierto = false }
+        )
+    }
 }
+
+/** Selector de tema: del sistema, claro u oscuro. Cada opción es una fila seleccionable de al menos 48 dp. */
+@Composable
+private fun DialogoTema(modoActual: ModoTema, onElegir: (ModoTema) -> Unit, onCerrar: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCerrar,
+        title = { Text("Tema de la app") },
+        text = {
+            Column(modifier = Modifier.selectableGroup()) {
+                ModoTema.entries.forEach { modo ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .selectable(selected = modo == modoActual, role = Role.RadioButton, onClick = { onElegir(modo) }),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = modo == modoActual, onClick = null)
+                        Text(modo.etiqueta, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 16.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onCerrar) { Text("Cerrar") } }
+    )
+}
+
+private val ALTURA_HOJA_PLEGADA = 96.dp
 
 /**
  * Mapa con tiles de OpenStreetMap (osmdroid). Reemplaza al Maps SDK for
@@ -280,19 +374,24 @@ fun HomeScreen(
  * antes hacía `onMapLongClick` de Google Maps Compose.
  */
 @Composable
-private fun MapaLugares(
+private fun MapaNegocios(
     modifier: Modifier = Modifier,
     centro: GeoPoint,
-    lugares: List<Lugar>,
+    negocios: List<Negocio>,
+    seleccionadoId: Long?,
+    onSeleccionar: (Long?) -> Unit,
     puntoSeleccionadoManual: GeoPoint?,
     tienePermisoUbicacion: Boolean,
-    onLugarClick: (Long) -> Unit,
+    onNegocioClick: (Long) -> Unit,
     onMapLongClick: (GeoPoint) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val onLugarClickActual = rememberUpdatedState(onLugarClick)
+    val onNegocioClickActual = rememberUpdatedState(onNegocioClick)
     val onMapLongClickActual = rememberUpdatedState(onMapLongClick)
+
+    val onSeleccionarActual = rememberUpdatedState(onSeleccionar)
+    val colorPrimario = MaterialTheme.colorScheme.primary.toArgb()
 
     val mapView = remember {
         MapView(context).apply {
@@ -302,7 +401,10 @@ private fun MapaLugares(
             controller.setCenter(centro)
             overlays.add(
                 MapEventsOverlay(object : MapEventsReceiver {
-                    override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean = false
+                    override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
+                        onSeleccionarActual.value(null)
+                        return false
+                    }
                     override fun longPressHelper(p: GeoPoint?): Boolean {
                         p?.let { onMapLongClickActual.value(it) }
                         return true
@@ -311,7 +413,15 @@ private fun MapaLugares(
             )
         }
     }
-    val miUbicacionOverlay = remember { MyLocationNewOverlay(GpsMyLocationProvider(context), mapView) }
+    val miUbicacionOverlay = remember {
+        MyLocationNewOverlay(GpsMyLocationProvider(context), mapView).apply {
+            val punto = MarcadorIconos.miUbicacion(context)
+            setPersonIcon(punto)
+            setDirectionArrow(punto, punto)
+            setPersonAnchor(0.5f, 0.5f)
+            setDirectionAnchor(0.5f, 0.5f)
+        }
+    }
 
     DisposableEffect(lifecycleOwner, mapView) {
         val observer = LifecycleEventObserver { _, event ->
@@ -344,29 +454,79 @@ private fun MapaLugares(
             vista.overlays.clear()
             eventosOverlay?.let { vista.overlays.add(it) }
             vista.overlays.add(miUbicacionOverlay)
-            lugares.forEach { lugar ->
-                vista.overlays.add(
+            // Los negocios muy juntos se agrupan en un círculo granate con el número (osmbonuspack). El seleccionado va
+            // fuera del grupo, encima, para que siempre se vea.
+            val grupos = RadiusMarkerClusterer(context).apply {
+                setIcon(MarcadorIconos.grupo(context))
+                setRadius((36 * context.resources.displayMetrics.density).toInt())
+                setMaxClusteringZoomLevel(16)
+                textPaint.apply {
+                    color = android.graphics.Color.WHITE
+                    textSize = 13 * context.resources.displayMetrics.scaledDensity
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                }
+            }
+            vista.overlays.add(grupos)
+            // Los del norte se dibujan primero y los del sur encima (la punta del pin queda abajo).
+            val marcadores = negocios.sortedWith(compareByDescending<Negocio> { it.latitud }.thenBy { it.id })
+                .map { negocio ->
+                    val seleccionado = negocio.id == seleccionadoId
                     Marker(vista).apply {
-                        position = GeoPoint(lugar.latitud, lugar.longitud)
-                        title = lugar.nombre
-                        snippet = lugar.categoria.etiqueta
+                        position = GeoPoint(negocio.latitud, negocio.longitud)
+                        title = negocio.nombre
+                        snippet = negocio.categoria.etiqueta
+                        // Drawable propio por marcador (el bitmap viene del caché); no se tiñe el ícono por defecto.
+                        icon = MarcadorIconos.pin(context, negocio.categoria, seleccionado, negocio.destacado)
+                        setAnchor(MarcadorIconos.ANCLA_X, MarcadorIconos.ANCLA_Y)
                         setOnMarkerClickListener { _, _ ->
-                            onLugarClickActual.value(lugar.id)
+                            onSeleccionarActual.value(negocio.id)
+                            onNegocioClickActual.value(negocio.id)
                             true
                         }
-                    }
-                )
-            }
+                    } to seleccionado
+                }
+            marcadores.filterNot { it.second }.forEach { grupos.add(it.first) }
+            grupos.invalidate()
+            marcadores.filter { it.second }.forEach { vista.overlays.add(it.first) }
             puntoSeleccionadoManual?.let { punto ->
                 vista.overlays.add(
                     Marker(vista).apply {
                         position = punto
                         title = "Punto de búsqueda"
+                        icon = MarcadorIconos.puntoElegido(context, colorPrimario)
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                     }
                 )
             }
             vista.invalidate()
         }
+    )
+}
+
+@Composable
+private fun CampoBusqueda(
+    consulta: String,
+    onConsultaCambiada: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val foco = LocalFocusManager.current
+    OutlinedTextField(
+        value = consulta,
+        onValueChange = onConsultaCambiada,
+        modifier = modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text("Buscar negocios", maxLines = 1) },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        trailingIcon = {
+            if (consulta.isNotEmpty()) {
+                IconButton(onClick = { onConsultaCambiada("") }) {
+                    Icon(Icons.Filled.Close, contentDescription = "Borrar búsqueda")
+                }
+            }
+        },
+        shape = RoundedCornerShape(24.dp),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { foco.clearFocus() })
     )
 }
 
@@ -388,9 +548,9 @@ private fun SelectorDeRadio(radioSeleccionado: Double, onRadioSeleccionado: (Dou
 }
 
 @Composable
-private fun SelectorDeCategoria(
-    categoriaSeleccionada: CategoriaLugar?,
-    onCategoriaSeleccionada: (CategoriaLugar?) -> Unit
+private fun SelectorDeRubro(
+    categoriaSeleccionada: Rubro?,
+    onCategoriaSeleccionada: (Rubro?) -> Unit
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 12.dp),
@@ -403,7 +563,7 @@ private fun SelectorDeCategoria(
                 label = { Text("Todas") }
             )
         }
-        items(CategoriaLugar.entries.toList()) { categoria ->
+        items(Rubro.entries.toList()) { categoria ->
             FilterChip(
                 selected = categoriaSeleccionada == categoria,
                 onClick = { onCategoriaSeleccionada(categoria) },
@@ -413,60 +573,103 @@ private fun SelectorDeCategoria(
     }
 }
 
+/** Contenido de la hoja inferior: encabezado con el conteo (visible plegada) y la lista de resultados. */
 @Composable
-private fun ListaLugaresCercanos(
-    lugares: List<Lugar>,
+private fun ListaNegociosCercanos(
+    negocios: List<Negocio>,
     origenLat: Double?,
     origenLng: Double?,
-    onLugarClick: (Long) -> Unit
+    onNegocioClick: (Long) -> Unit,
+    consulta: String,
+    busquedaAmpliada: Boolean,
+    onAmpliarBusqueda: (Boolean) -> Unit
 ) {
-    if (lugares.isEmpty()) return
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    val total = negocios.size
+    val zona = if (busquedaAmpliada) "en Bermejo" else "cerca"
+    Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.6f)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                if (total == 0) "Sin resultados ${if (busquedaAmpliada) "en Bermejo" else "en este radio"}"
+                else "$total ${if (total == 1) "negocio" else "negocios"} $zona",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f).padding(vertical = 4.dp)
+            )
+            if (busquedaAmpliada) {
+                TextButton(onClick = { onAmpliarBusqueda(false) }) { Text("Usar radio") }
+            } else if (total == 0 && consulta.isNotBlank()) {
+                TextButton(onClick = { onAmpliarBusqueda(true) }) { Text("Buscar en todo Bermejo") }
+            }
+        }
+        HorizontalDivider()
+        // La hoja llega hasta el borde inferior (edge-to-edge): el último negocio no debe quedar bajo la barra del sistema.
+        val barraSistema = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp + barraSistema)) {
+            items(negocios, key = { "negocio-${it.id}" }) { negocio ->
+                FilaCercana(
+                    nombre = negocio.nombre,
+                    etiqueta = negocio.categoria.etiqueta,
+                    foto = negocio.fotos.firstOrNull(),
+                    rubro = negocio.categoria,
+                    distanciaMetros = origenLat?.let { lat -> origenLng?.let { lng -> negocio.calcularDistancia(lat, lng) } },
+                    onClick = { onNegocioClick(negocio.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilaCercana(
+    nombre: String,
+    etiqueta: String,
+    foto: String?,
+    rubro: Rubro,
+    distanciaMetros: Double?,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = "Ver $nombre", role = Role.Button, onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        items(lugares) { lugar ->
-            Card(
-                modifier = Modifier
-                    .width(232.dp)
-                    .clickable { onLugarClick(lugar.id) },
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        lugar.nombre,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            // Sin foto se ve el placeholder del rubro, del mismo color que el marcador del mapa.
+            FotoNegocioImagen(foto, null, Modifier.fillMaxSize(), rubro = rubro) // decorativa: el nombre ya está en el texto
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(nombre, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                etiqueta,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (distanciaMetros != null) {
+                val texto = if (distanciaMetros >= 1000) "%.1f km".format(distanciaMetros / 1000) else "${distanciaMetros.roundToInt()} m"
+                Row(
+                    modifier = Modifier.padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.NearMe,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
                     )
-                    Text(
-                        lugar.categoria.etiqueta,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                    if (origenLat != null && origenLng != null) {
-                        val distanciaMetros = lugar.calcularDistancia(origenLat, origenLng)
-                        val texto = if (distanciaMetros >= 1000) {
-                            "%.1f km".format(distanciaMetros / 1000)
-                        } else {
-                            "${distanciaMetros.roundToInt()} m"
-                        }
-                        Row(
-                            modifier = Modifier.padding(top = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.NearMe,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(texto, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
+                    Text(texto, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }

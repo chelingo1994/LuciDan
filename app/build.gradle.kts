@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -34,7 +35,18 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // El parser de la semilla usa android.util.Log; en tests de JVM debe devolver valores por defecto.
+        unitTests.isReturnDefaultValues = true
+    }
 }
+
+// La fuente editable de los negocios de ejemplo es docs/negocios_bermejo.txt: se copia a assets en cada build.
+val copiarSemilla = tasks.register<Copy>("copiarSemilla") {
+    from(rootProject.file("docs/negocios_bermejo.txt"))
+    into(layout.projectDirectory.dir("src/main/assets"))
+}
+tasks.named("preBuild") { dependsOn(copiarSemilla) }
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
@@ -54,8 +66,12 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.play.services.location)
     implementation(libs.osmdroid.android)
+    implementation(libs.osmbonuspack)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

@@ -1,0 +1,87 @@
+package dev.justinianomarcelo.lucidanapp.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+// ============================================================
+// Paleta Material 3 de LuciDan App
+// Generada con material-color-utilities (Google) desde el color
+// de marca #632423 (maroon). No editar a mano: regenerar desde
+// la semilla si cambia el color de marca.
+// ============================================================
+
+// ---- Esquema claro ----
+val md_theme_light_primary = Color(0xFF9C413F)
+val md_theme_light_onPrimary = Color(0xFFFFFFFF)
+val md_theme_light_primaryContainer = Color(0xFFFFDAD7)
+val md_theme_light_onPrimaryContainer = Color(0xFF410005)
+val md_theme_light_secondary = Color(0xFF775654)
+val md_theme_light_onSecondary = Color(0xFFFFFFFF)
+val md_theme_light_secondaryContainer = Color(0xFFFFDAD7)
+val md_theme_light_onSecondaryContainer = Color(0xFF2C1514)
+val md_theme_light_tertiary = Color(0xFF735B2E)
+val md_theme_light_onTertiary = Color(0xFFFFFFFF)
+val md_theme_light_tertiaryContainer = Color(0xFFFFDEA8)
+val md_theme_light_onTertiaryContainer = Color(0xFF271900)
+val md_theme_light_error = Color(0xFFBA1A1A)
+val md_theme_light_onError = Color(0xFFFFFFFF)
+val md_theme_light_errorContainer = Color(0xFFFFDAD6)
+val md_theme_light_onErrorContainer = Color(0xFF410002)
+val md_theme_light_background = Color(0xFFFFFBFF)
+val md_theme_light_onBackground = Color(0xFF201A1A)
+val md_theme_light_surface = Color(0xFFFFFBFF)
+val md_theme_light_onSurface = Color(0xFF201A1A)
+val md_theme_light_surfaceVariant = Color(0xFFF4DDDB)
+val md_theme_light_onSurfaceVariant = Color(0xFF534342)
+val md_theme_light_outline = Color(0xFF857371)
+val md_theme_light_outlineVariant = Color(0xFFD8C1C0)
+val md_theme_light_scrim = Color(0xFF000000)
+val md_theme_light_inverseSurface = Color(0xFF362F2E)
+val md_theme_light_inverseOnSurface = Color(0xFFFBEEEC)
+val md_theme_light_inversePrimary = Color(0xFFFFB3AF)
+val md_theme_light_surfaceDim = Color(0xFFE4D7D6)
+val md_theme_light_surfaceBright = Color(0xFFFFF8F7)
+val md_theme_light_surfaceContainerLowest = Color(0xFFFFFFFF)
+val md_theme_light_surfaceContainerLow = Color(0xFFFEF1EF)
+val md_theme_light_surfaceContainer = Color(0xFFF8EBEA)
+val md_theme_light_surfaceContainerHigh = Color(0xFFF2E5E4)
+val md_theme_light_surfaceContainerHighest = Color(0xFFEDE0DE)
+
+// ---- Esquema oscuro ----
+val md_theme_dark_primary = Color(0xFFFFB3AF)
+val md_theme_dark_onPrimary = Color(0xFF5F1316)
+val md_theme_dark_primaryContainer = Color(0xFF7E2A2A)
+val md_theme_dark_onPrimaryContainer = Color(0xFFFFDAD7)
+val md_theme_dark_secondary = Color(0xFFE7BDBA)
+val md_theme_dark_onSecondary = Color(0xFF442928)
+val md_theme_dark_secondaryContainer = Color(0xFF5D3F3D)
+val md_theme_dark_onSecondaryContainer = Color(0xFFFFDAD7)
+val md_theme_dark_tertiary = Color(0xFFE2C28C)
+val md_theme_dark_onTertiary = Color(0xFF402D05)
+val md_theme_dark_tertiaryContainer = Color(0xFF594319)
+val md_theme_dark_onTertiaryContainer = Color(0xFFFFDEA8)
+val md_theme_dark_error = Color(0xFFFFB4AB)
+val md_theme_dark_onError = Color(0xFF690005)
+val md_theme_dark_errorContainer = Color(0xFF93000A)
+val md_theme_dark_onErrorContainer = Color(0xFFFFB4AB)
+val md_theme_dark_background = Color(0xFF201A1A)
+val md_theme_dark_onBackground = Color(0xFFEDE0DE)
+val md_theme_dark_surface = Color(0xFF201A1A)
+val md_theme_dark_onSurface = Color(0xFFEDE0DE)
+val md_theme_dark_surfaceVariant = Color(0xFF534342)
+val md_theme_dark_onSurfaceVariant = Color(0xFFD8C1C0)
+val md_theme_dark_outline = Color(0xFFA08C8B)
+val md_theme_dark_outlineVariant = Color(0xFF534342)
+val md_theme_dark_scrim = Color(0xFF000000)
+val md_theme_dark_inverseSurface = Color(0xFFEDE0DE)
+val md_theme_dark_inverseOnSurface = Color(0xFF362F2E)
+val md_theme_dark_inversePrimary = Color(0xFF9C413F)
+val md_theme_dark_surfaceDim = Color(0xFF181212)
+val md_theme_dark_surfaceBright = Color(0xFF3F3737)
+val md_theme_dark_surfaceContainerLowest = Color(0xFF120D0C)
+val md_theme_dark_surfaceContainerLow = Color(0xFF201A1A)
+val md_theme_dark_surfaceContainer = Color(0xFF251E1E)
+val md_theme_dark_surfaceContainerHigh = Color(0xFF2F2828)
+val md_theme_dark_surfaceContainerHighest = Color(0xFF3A3332)
+
+// ---- Color de marca original (referencia) ----
+val LuciDanSeed = Color(0xFF632423)

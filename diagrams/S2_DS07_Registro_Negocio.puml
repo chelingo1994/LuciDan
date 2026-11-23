@@ -40,9 +40,9 @@ participant "NegocioViewModel" as VM
 participant "NegocioRepository" as REPO
 database "Base de Datos\n(Room)" as DB
 
-U -> UI : completar formulario de registro\n(nombre, categoría, ubicación, fotos, horario)
+U -> UI : completar formulario de registro\n(nombre, rubro, descripción, teléfono opcional,\ndirección, ubicación GPS, fotos, horario)
 UI -> VM : registrarNegocio(datos)
-VM -> VM : validar campos obligatorios
+VM -> VM : validar campos obligatorios\n(el teléfono es opcional; si se escribe, se valida su formato)
 alt datos válidos
   VM -> REPO : guardarNegocio(datos, estado = "Pendiente")
   REPO -> DB : INSERT INTO negocios

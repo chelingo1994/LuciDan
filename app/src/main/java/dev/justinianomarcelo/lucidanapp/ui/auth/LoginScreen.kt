@@ -17,9 +17,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import dev.justinianomarcelo.lucidanapp.R
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -83,34 +87,10 @@ private fun LoginContenido(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Center
     ) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(64.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    Icons.Filled.Storefront,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-        }
-        Text(
-            text = "LuciDan",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 24.dp)
-        )
-        Text(
-            text = "Comercios y lugares de Bermejo, a un toque.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp)
-        )
+        // El nombre ya va en el logo: sin título repetido debajo.
+        CabeceraAuth(titulo = null, subtitulo = "Los negocios de Bermejo, a un toque.")
 
-        Column(modifier = Modifier.padding(top = 32.dp)) {
+        Column(modifier = Modifier.padding(top = 40.dp)) {
             OutlinedTextField(
                 value = estado.correo,
                 onValueChange = onCorreoChange,
@@ -121,15 +101,10 @@ private fun LoginContenido(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(
+            CampoContrasena(
                 value = estado.contrasena,
                 onValueChange = onContrasenaChange,
-                label = { Text("Contraseña") },
-                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                label = "Contraseña",
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 16.dp)

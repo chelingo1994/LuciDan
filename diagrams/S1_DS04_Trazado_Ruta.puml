@@ -32,15 +32,15 @@ skinparam noteBackgroundColor #FFF9E8
 skinparam noteBorderColor #8A7A6C
 
 
-title DS04 — Trazado de ruta hacia un lugar (HU05)
+title DS04 — Trazado de ruta hacia un negocio (HU05)
 autonumber
-actor "Turista / Residente" as U
+actor "Visitante / Residente" as U
 participant "DetalleScreen" as UI
 participant "DetalleViewModel" as VM
-participant "RutaService\n(Directions API)" as RUTA
+participant "RutaService\n(OSRM)" as RUTA
 
 U -> UI : presionar "Cómo llegar"
-UI -> VM : trazarRuta(origenActual, lugarDestino)
+UI -> VM : trazarRuta(origenActual, negocioDestino)
 VM -> RUTA : calcularRuta(origen, destino)
 RUTA --> VM : distancia, tiempo estimado, polilínea
 VM --> UI : actualizar estado (ruta)

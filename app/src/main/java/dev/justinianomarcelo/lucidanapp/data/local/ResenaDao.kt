@@ -1,19 +1,29 @@
 package dev.justinianomarcelo.lucidanapp.data.local
 
 import androidx.room.Dao
-import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Upsert
 import dev.justinianomarcelo.lucidanapp.data.model.Resena
 
 @Dao
 interface ResenaDao {
 
-    @Insert
-    suspend fun insertar(resena: Resena): Long
+    /** Upsert (UPDATE, no REPLACE): la misma reseña puede llegar de la nube varias veces. */
+    @Upsert
+    suspend fun upsertar(resenas: List<Resena>)
 
-    @Query("SELECT * FROM resenas WHERE lugarId = :lugarId ORDER BY fecha DESC")
-    suspend fun obtenerPorLugar(lugarId: Long): List<Resena>
+    @Upsert
+    suspend fun upsertar(resena: Resena)
 
-    @Query("SELECT AVG(calificacion) FROM resenas WHERE lugarId = :lugarId")
-    suspend fun promedioPorLugar(lugarId: Long): Double?
+    @Query("SELECT * FROM resenas WHERE negocioId = :negocioId ORDER BY fecha DESC")
+    suspend fun obtenerPorNegocio(negocioId: Long): List<Resena>
+
+    @Query("SELECT * FROM resenas")
+    suspend fun obtenerTodas(): List<Resena>
+
+    @Query("SELECT AVG(calificacion) FROM resenas WHERE negocioId = :negocioId")
+    suspend fun promedioPorNegocio(negocioId: Long): Double?
+
+    @Query("SELECT id FROM negocios")
+    suspend fun idsDeNegocios(): List<Long>
 }

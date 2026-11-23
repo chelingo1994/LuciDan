@@ -30,17 +30,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-/** TA-09-01/02/03: edición del perfil de negocio, con carga y guardado inmediato. */
+/**
+ * TA-09-01/02/03: edición del perfil de negocio, con carga y guardado inmediato. Con
+ * [negocioId] = [NUEVO_NEGOCIO] es el formulario de registro de un negocio nuevo (DS07 / HU08).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditarNegocioScreen(
+    negocioId: Long,
     onVolver: () -> Unit,
     viewModel: NegocioViewModel = viewModel()
 ) {
     val estado = viewModel.uiState
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) { viewModel.cargarNegocio() }
+    LaunchedEffect(negocioId) { viewModel.cargarNegocio(negocioId) }
+    val esNuevo = negocioId == NUEVO_NEGOCIO
     LaunchedEffect(estado.mensaje) {
         estado.mensaje?.let {
             snackbarHostState.showSnackbar(it)
@@ -53,7 +58,7 @@ fun EditarNegocioScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it, shape = MaterialTheme.shapes.small) } },
         topBar = {
             TopAppBar(
-                title = { Text("Editar perfil de negocio") },
+                title = { Text(if (esNuevo) "Registrar negocio" else "Editar perfil de negocio") },
                 navigationIcon = {
                     IconButton(onClick = onVolver) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Volver")
@@ -69,6 +74,12 @@ fun EditarNegocioScreen(
             }
             return@Scaffold
         }
+        if (estado.noEncontrado) {
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                Text("No encontramos este negocio en tu cuenta.", style = MaterialTheme.typography.bodyLarge)
+            }
+            return@Scaffold
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -77,12 +88,13 @@ fun EditarNegocioScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                "Mantén tu ficha al día",
+                if (esNuevo) "Registra tu negocio" else "Mantén tu ficha al día",
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(top = 16.dp)
             )
             Text(
-                "Actualiza los datos que ven tus clientes.",
+                if (esNuevo) "Aparecerá en el mapa de LuciDan cuando sea publicado."
+                else "Actualiza los datos que ven tus clientes.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
@@ -90,19 +102,29 @@ fun EditarNegocioScreen(
             NegocioFormulario(
                 nombre = estado.nombre,
                 categoria = estado.categoria,
-                ubicacion = estado.ubicacion,
+                descripcion = estado.descripcion,
+                telefono = estado.telefono,
+                direccion = estado.direccion,
                 horario = estado.horario,
                 foto = estado.foto,
+                latitud = estado.latitud,
+                longitud = estado.longitud,
+                obteniendoUbicacion = estado.obteniendoUbicacion,
                 errores = estado.errores,
                 guardando = estado.guardando,
-                textoBoton = "Guardar cambios",
+                textoBoton = if (esNuevo) "Registrar negocio" else "Guardar cambios",
                 onNombreChange = viewModel::onNombreChange,
                 onCategoriaChange = viewModel::onCategoriaChange,
-                onUbicacionChange = viewModel::onUbicacionChange,
+                onDescripcionChange = viewModel::onDescripcionChange,
+                onTelefonoChange = viewModel::onTelefonoChange,
+                onDireccionChange = viewModel::onDireccionChange,
                 onHorarioChange = viewModel::onHorarioChange,
+                onUsarUbicacionActual = viewModel::onUsarUbicacionActual,
                 onFotoSeleccionada = viewModel::onFotoSeleccionada,
                 onQuitarFoto = viewModel::onQuitarFoto,
-                onGuardar = { viewModel.guardarCambios(onVolver) }
+                onGuardar = {
+                    if (esNuevo) viewModel.registrarNegocio(onVolver) else viewModel.guardarCambios(onVolver)
+                }
             )
         }
     }

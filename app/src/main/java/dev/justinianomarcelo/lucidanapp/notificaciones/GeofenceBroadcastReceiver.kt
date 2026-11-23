@@ -20,11 +20,11 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         val usuario = SessionManager.usuarioActual.value
         if (usuario?.notificacionesActivas != true) return
 
-        val lugarId = evento.triggeringGeofences?.firstOrNull()?.requestId?.toLongOrNull() ?: return
+        val negocioId = evento.triggeringGeofences?.firstOrNull()?.requestId?.toLongOrNull() ?: return
 
         CoroutineScope(Dispatchers.IO).launch {
-            val lugar = AppDatabase.obtenerInstancia(context).lugarDao().obtenerPorId(lugarId) ?: return@launch
-            NotificationService(context).notificarLugarCercano(lugar)
+            val negocio = AppDatabase.obtenerInstancia(context).negocioDao().obtenerPorId(negocioId) ?: return@launch
+            NotificationService(context).notificarNegocioCercano(negocio)
         }
     }
 }

@@ -1,0 +1,82 @@
+@startuml
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam ArrowColor #632423
+skinparam ArrowFontColor #2B1D14
+skinparam ArrowFontSize 11
+skinparam activity {
+  BorderColor #632423
+  BackgroundColor #FFF6F0
+  FontColor #2B1D14
+  FontSize 12
+  DiamondBorderColor #632423
+  DiamondBackgroundColor #FFF9E8
+  DiamondFontColor #2B1D14
+  StartColor #632423
+  EndColor #632423
+  BarColor #632423
+}
+skinparam swimlane {
+  BorderColor #632423
+  TitleFontColor #632423
+  TitleFontStyle bold
+}
+skinparam noteBackgroundColor #FFF9E8
+skinparam noteBorderColor #8A7A6C
+skinparam title AD01 — Explorar y contactar un negocio (HU01–HU07)
+
+start
+:**Usuario:** abre LuciDan App;
+if (¿Tiene permiso de ubicación?) then (sí)
+  :**App:** obtiene la ubicación GPS;
+else (no)
+  :**App:** solicita el permiso de ubicación;
+  if (¿El usuario lo concede?) then (sí)
+    :**App:** obtiene la ubicación GPS;
+  else (no)
+    :**Usuario:** elige un punto en el mapa (HU03);
+  endif
+endif
+:**App:** busca los negocios PUBLICADOS dentro del radio\n(1 km por defecto);
+:**App:** muestra los marcadores por rubro y la lista "N negocios cerca";
+repeat
+  if (¿El usuario quiere afinar la búsqueda?) then (sí)
+    :**Usuario:** cambia el radio (500 m, 1, 2 o 5 km), filtra por rubro,\nbusca por nombre o elige otro punto;
+    :**App:** recalcula y actualiza el mapa y la lista;
+  endif
+repeat while (¿Todavía no elige un negocio?) is (sí) not (no)
+:**Usuario:** toca un marcador o una tarjeta de la lista;
+:**App:** abre la ficha del negocio (foto o placeholder, rubro,\ncalificación, descripción, horario, dirección y reseñas);
+:**App:** registra la vista del negocio (estadística);
+repeat
+  if (¿El usuario quiere contactar al negocio?) then (sí)
+    if (¿El negocio tiene teléfono?) then (sí)
+      if (¿Es un celular boliviano\n(8 dígitos, empieza con 6 o 7)?) then (sí)
+        if (¿Está instalado WhatsApp?) then (sí)
+          :**App:** abre el chat de WhatsApp (wa.me/591...);
+        else (no)
+          :**App:** abre el marcador del teléfono;
+        endif
+      else (no)
+        :**App:** abre el marcador del teléfono;
+      endif
+    else (no)
+      :**App:** no muestra el botón de contacto;
+    endif
+  elseif (¿Quiere saber cómo llegar?) then (sí)
+    :**App:** registra el clic en "Cómo llegar";
+    :**App:** calcula la ruta con OSRM;
+    :**App:** muestra la ruta con distancia y tiempo estimado;
+  elseif (¿Quiere guardar un favorito o dejar una reseña?) then (sí)
+    if (¿Tiene sesión iniciada?) then (sí)
+      :**App:** guarda el favorito o la reseña\n(calificación de 1 a 5 y comentario);
+    else (no)
+      :**App:** pide iniciar sesión o registrarse;
+    endif
+  else (no)
+  endif
+repeat while (¿Hace otra acción en esta ficha?) is (sí) not (no)
+stop
+@enduml

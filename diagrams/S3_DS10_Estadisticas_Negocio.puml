@@ -34,7 +34,7 @@ skinparam noteBorderColor #8A7A6C
 
 title DS10 — Registro y consulta de estadísticas (HU11)
 autonumber
-actor "Turista / Residente" as T
+actor "Visitante / Residente" as T
 actor "Dueño de Negocio" as N
 participant "DetalleScreen" as UID
 participant "PanelEstadisticasScreen" as UIN

@@ -1,0 +1,80 @@
+rules_version = '2';
+
+// Reglas de Firestore para LuciDan.
+//
+// LIMITACIÓN: el login de la app es local (Room), no Firebase Authentication, así que Firestore no
+// puede saber quién escribe. Estas reglas solo validan la forma de los datos. Que "solo el dueño
+// edita su negocio" o "solo el admin publica" lo aplica hoy la app, no el servidor. Para exigirlo
+// aquí hay que pasar el login a Firebase Authentication.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function rubroValido(c) {
+      return c in ['GASTRONOMIA', 'FARMACIA_SALUD', 'MODA_ROPA', 'CAMBIO_MONEDA', 'TRANSPORTE',
+                   'ALOJAMIENTO', 'ABARROTES', 'TECNOLOGIA', 'SERVICIOS', 'OTRO'];
+    }
+
+    function negocioValido(d) {
+      return d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 150
+        && rubroValido(d.categoria)
+        && d.descripcion is string && d.descripcion.size() <= 2000
+        && d.telefono is string && d.telefono.size() <= 30
+        && (!('direccion' in d) || (d.direccion is string && d.direccion.size() <= 300))
+        && d.latitud is number && d.longitud is number
+        && d.estado in ['PENDIENTE', 'PUBLICADO', 'SUSPENDIDO']
+        && d.fotos is list && d.fotos.size() <= 10
+        && d.destacado is bool
+        && d.duenoId is string && d.duenoId.size() > 0 && d.duenoId.size() <= 64;
+    }
+
+    function resenaValida(d) {
+      return d.negocioId is number
+        && d.autorId is string && d.autorId.size() <= 64
+        && d.calificacion is number && d.calificacion >= 1 && d.calificacion <= 5
+        && d.comentario is string && d.comentario.size() <= 1000
+        && d.fecha is number;
+    }
+
+    // Info útil (sección "Info útil" de la app, EPIC07). Mismas limitaciones que `negocios`: sin Firebase
+    // Authentication no se puede comprobar que quien escribe sea ADMINISTRADOR; eso lo exige la app.
+    function textoCorto(v) {
+      return v is string && v.size() <= 1500;
+    }
+
+    function cambioValido(d) {
+      return d.compraArsPorBs is number && d.compraArsPorBs > 0 && d.compraArsPorBs <= 100000
+        && d.ventaArsPorBs is number && d.ventaArsPorBs >= d.compraArsPorBs && d.ventaArsPorBs <= 100000
+        && d.actualizado is number
+        && d.adminId is string && d.adminId.size() > 0 && d.adminId.size() <= 64;
+    }
+
+    function fronteraValida(d) {
+      return textoCorto(d.horarioPaso) && textoCorto(d.horarioChalanas) && textoCorto(d.tarifasChalanas)
+        && textoCorto(d.recomendaciones) && textoCorto(d.telPolicia) && textoCorto(d.telBomberos)
+        && textoCorto(d.telAmbulancia) && textoCorto(d.telMigracion)
+        && d.actualizado is number
+        && d.adminId is string && d.adminId.size() > 0 && d.adminId.size() <= 64;
+    }
+
+    match /info_util/{doc} {
+      allow read: if true;
+      allow create, update: if (doc == 'cambio' && cambioValido(request.resource.data))
+                            || (doc == 'frontera' && fronteraValida(request.resource.data));
+      allow delete: if false;
+    }
+
+    // Reseñas: lectura pública; solo se crean (no se editan ni se borran).
+    match /resenas/{id} {
+      allow read: if true;
+      allow create: if resenaValida(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    // Negocios: lectura pública (es un directorio).
+    match /negocios/{id} {
+      allow read: if true;
+      allow create, update: if negocioValido(request.resource.data);
+      allow delete: if true;
+    }
+  }
+}

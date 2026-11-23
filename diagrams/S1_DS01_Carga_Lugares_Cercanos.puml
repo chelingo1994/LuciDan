@@ -32,24 +32,24 @@ skinparam noteBackgroundColor #FFF9E8
 skinparam noteBorderColor #8A7A6C
 
 
-title DS01 — Carga de lugares cercanos según el radio (HU01)
+title DS01 — Carga de negocios cercanos según el radio (HU01)
 autonumber
-actor "Turista / Residente" as U
+actor "Visitante / Residente" as U
 participant "HomeScreen" as UI
 participant "HomeViewModel" as VM
-participant "LugarRepository" as REPO
+participant "NegocioRepository" as REPO
 participant "LocationService" as GPS
 database "Base de Datos\n(Room)" as DB
 
 U -> UI : abrir pantalla Home
 UI -> GPS : solicitar ubicación actual
 GPS --> UI : latitud, longitud
-UI -> VM : cargarLugaresCercanos(lat, lng, radio)
-VM -> REPO : obtenerLugaresCercanos(lat, lng, radio)
-REPO -> DB : SELECT lugares WHERE distancia <= radio
-DB --> REPO : lista de lugares
-REPO --> VM : lista de lugares
-VM --> UI : actualizar estado (lugares)
+UI -> VM : cargarNegociosCercanos(lat, lng, radio)
+VM -> REPO : obtenerNegociosCercanos(lat, lng, radio)
+REPO -> DB : SELECT negocios WHERE estado = "PUBLICADO"\nAND distancia <= radio
+DB --> REPO : lista de negocios
+REPO --> VM : lista de negocios
+VM --> UI : actualizar estado (negocios)
 UI --> U : mostrar marcadores en el mapa
 
 @enduml

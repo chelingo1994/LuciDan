@@ -1,11 +1,11 @@
 package dev.justinianomarcelo.lucidanapp.ui.detalle
 
-import dev.justinianomarcelo.lucidanapp.data.model.Lugar
+import dev.justinianomarcelo.lucidanapp.data.model.Negocio
 import dev.justinianomarcelo.lucidanapp.data.model.Resena
 import dev.justinianomarcelo.lucidanapp.ruta.ResultadoRuta
 
 data class DetalleUiState(
-    val lugar: Lugar? = null,
+    val negocio: Negocio? = null,
     val resenas: List<Resena> = emptyList(),
     val esFavorito: Boolean = false,
     val ruta: ResultadoRuta? = null,

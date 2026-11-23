@@ -88,17 +88,12 @@ private fun RecuperarContenido(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Top
     ) {
-        Text(
-            text = "Recupera tu acceso",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 16.dp)
-        )
-        Text(
-            text = "Ingresa tu correo registrado y define una nueva contraseña.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
+        CabeceraAuth(
+            titulo = "Recupera tu acceso",
+            subtitulo = "Ingresa tu correo registrado y define una nueva contraseña.",
+            anchoLogo = 200.dp,
+            estiloTitulo = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(top = 8.dp, bottom = 28.dp)
         )
 
         OutlinedTextField(
@@ -111,29 +106,19 @@ private fun RecuperarContenido(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth()
         )
-        OutlinedTextField(
+        CampoContrasena(
             value = estado.contrasena,
             onValueChange = onContrasenaChange,
-            label = { Text("Nueva contraseña") },
-            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            supportingText = { Text("Mínimo 8 caracteres, con mayúscula, minúscula y número.") },
+            label = "Nueva contraseña",
+            supportingText = "Mínimo 8 caracteres, con mayúscula, minúscula y número.",
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp)
         )
-        OutlinedTextField(
+        CampoContrasena(
             value = estado.confirmarContrasena,
             onValueChange = onConfirmarContrasenaChange,
-            label = { Text("Confirmar nueva contraseña") },
-            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            label = "Confirmar nueva contraseña",
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)

@@ -1,0 +1,67 @@
+@startuml
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam ArrowColor #632423
+skinparam ArrowFontColor #2B1D14
+skinparam ArrowFontSize 11
+skinparam activity {
+  BorderColor #632423
+  BackgroundColor #FFF6F0
+  FontColor #2B1D14
+  FontSize 12
+  DiamondBorderColor #632423
+  DiamondBackgroundColor #FFF9E8
+  DiamondFontColor #2B1D14
+  StartColor #632423
+  EndColor #632423
+  BarColor #632423
+}
+skinparam swimlane {
+  BorderColor #632423
+  TitleFontColor #632423
+  TitleFontStyle bold
+}
+skinparam noteBackgroundColor #FFF9E8
+skinparam noteBorderColor #8A7A6C
+skinparam title AD02 — Registrar un negocio y publicarlo (HU08, HU09, HU14)
+
+start
+if (¿El dueño tiene sesión iniciada?) then (no)
+  :**Dueño:** se registra o inicia sesión;
+endif
+:**Dueño:** abre "Mis negocios" y toca "Agregar negocio";
+repeat
+  :**Dueño:** completa nombre, rubro, descripción de qué vende,\nhorario y dirección;
+  :**Dueño:** escribe el teléfono (opcional);
+  :**Dueño:** obtiene la ubicación GPS;
+  :**Dueño:** elige una foto de la galería (opcional);
+  if (¿La app pudo procesar la foto?) then (no)
+    :**App:** muestra "No se pudo cargar la foto";
+  else (sí)
+    :**App:** muestra la vista previa de la foto;
+  endif
+  :**Dueño:** toca "Guardar";
+  :**App:** valida nombre, rubro, dirección y ubicación GPS\ny, si hay teléfono, su formato;
+  if (¿Los datos son válidos?) then (no)
+    :**App:** resalta los campos con error;
+  endif
+repeat while (¿Hay errores en el formulario?) is (sí) not (no)
+:**App:** guarda el negocio en el teléfono con estado PENDIENTE;
+:**App:** sube el negocio a Firestore;
+:**App:** muestra "Perfil pendiente de publicación";
+note right: Mientras esté PENDIENTE,\nel negocio NO aparece en el mapa.
+:**Administrador:** abre el panel de administración (HU14)\ny revisa los negocios pendientes;
+if (¿Qué decide el administrador?) then (publicar)
+  :**Administrador:** cambia el estado a PUBLICADO;
+  :**App:** sincroniza el cambio con la nube;
+  :**App:** el negocio aparece en el mapa y en la lista\nde los visitantes cercanos;
+else (suspender)
+  :**Administrador:** cambia el estado a SUSPENDIDO;
+  :**App:** sincroniza el cambio con la nube;
+  :**App:** el negocio deja de mostrarse a los visitantes;
+endif
+:**Dueño:** puede editar su perfil cuando quiera (HU09);
+stop
+@enduml

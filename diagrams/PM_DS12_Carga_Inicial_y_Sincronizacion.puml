@@ -1,0 +1,79 @@
+@startuml
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam maxMessageSize 300
+skinparam sequenceArrowThickness 1
+skinparam ArrowColor #632423
+skinparam ArrowFontColor #2B1D14
+skinparam ArrowFontSize 11
+skinparam sequence {
+  ActorBorderColor #632423
+  ActorBackgroundColor #FFF6F0
+  ActorFontColor #2B1D14
+  ParticipantBorderColor #632423
+  ParticipantBackgroundColor #FFF6F0
+  ParticipantFontColor #632423
+  ParticipantFontStyle bold
+  LifeLineBorderColor #8A7A6C
+  LifeLineBackgroundColor #FFF6F0
+  BoxBorderColor #632423
+  BoxFontColor #632423
+  BoxBackgroundColor #FFF9F5
+  DividerBorderColor #632423
+  DividerBackgroundColor #F2E4DE
+  DividerFontColor #632423
+}
+skinparam titleFontColor #632423
+skinparam titleFontSize 18
+skinparam titleFontStyle bold
+skinparam noteBackgroundColor #FFF9E8
+skinparam noteBorderColor #8A7A6C
+
+title DS12 — Carga inicial de negocios y sincronización con la nube (Post-migración)
+autonumber
+actor "Sistema\n(al abrir la app)" as U
+participant "AppDatabase\n(Room)" as DB
+participant "NegociosSemilla" as SEM
+participant "HomeViewModel" as VM
+participant "NegocioRepository" as REPO
+participant "NubeService" as NUBE
+database "Cloud Firestore\n(colección negocios)" as FS
+
+== Carga inicial de la semilla (docs/negocios_bermejo.txt, copiado a assets en cada compilación) ==
+U -> DB : abrir la base de datos
+DB -> SEM : cargar negocios de assets/negocios_bermejo.txt
+SEM -> SEM : leer línea por línea\n(ignora # y líneas inválidas; rubro desconocido = OTRO)
+SEM --> DB : lista de Negocio (id = ID_BASE + posición,\nestado PUBLICADO, dueño "semilla")
+DB -> DB : INSERT OR IGNORE INTO negocios
+note right: El primer arranque los carga;\nlos siguientes no duplican.\nEditar una línea ya cargada NO actualiza\nlos teléfonos que ya la tienen.
+DB -> DB : UPDATE fotos vacías con la foto de la semilla
+DB --> U : base lista
+
+== Sincronización con Firestore ==
+U -> VM : abrir pantalla Home
+VM -> REPO : sincronizar()
+REPO -> NUBE : leerNegocios()
+NUBE -> FS : get colección "negocios"
+alt hay conexión y las reglas lo permiten
+  FS --> NUBE : documentos de negocios
+  NUBE --> REPO : lista de Negocio\n(categoría inexistente = OTRO, "ubicacion" se lee como "direccion")
+  loop por cada negocio de la nube
+    REPO -> DB : guardar o actualizar negocio\n(conserva promedioCalificacion y las fotos locales\nsi la nube no trae ninguna)
+  end
+  loop por cada negocio de ejemplo (dueño "semilla") que falta en la nube
+    REPO -> NUBE : subir(negocio)
+    NUBE -> FS : set documento
+  end
+  note over REPO: Los negocios de ejemplo NUNCA se borran por\nsincronización: no se puede distinguir "borrado por\nun administrador" de "la subida falló".
+  REPO -> DB : eliminar negocios registrados por dueños\nque ya no existen en la nube
+else sin conexión o error (p. ej. PERMISSION_DENIED)
+  FS --> NUBE : error
+  NUBE --> REPO : fallo de sincronización
+  REPO --> VM : conservar los datos locales de Room
+end
+DB --> VM : negocios PUBLICADOS (Flow)
+VM --> U : mostrar marcadores y lista de negocios cercanos
+
+@enduml

@@ -15,6 +15,7 @@ data class Usuario(
     val correo: String,
     val contrasenaHash: String,
     val fechaRegistro: Date = Date(),
-    val rol: RolUsuario = RolUsuario.TURISTA,
-    val notificacionesActivas: Boolean = true
+    val rol: RolUsuario = RolUsuario.VISITANTE,
+    val notificacionesActivas: Boolean = true,
+    val activo: Boolean = true
 )

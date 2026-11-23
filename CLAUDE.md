@@ -6,27 +6,24 @@
 
 ## 1. Qué es el proyecto
 
-**LuciDan App**: aplicación móvil centrada en el **comercio local de Bermejo,
-Tarija, Bolivia** (ciudad fronteriza con Argentina, paso de Aguas Blancas),
-con un complemento de turismo. Bermejo es un punto de paso comercial, no un
-destino turístico como Tarija capital — por eso el eje central de la app es
-que turistas, comerciantes y viajeros que cruzan la frontera encuentren
-fácilmente qué negocios hay (qué venden, dónde están, cómo contactarlos),
-con los lugares turísticos como complemento. Proyecto académico y personal
-de **Marcelo Justiniano**, quien asume TODOS los roles: Patrocinador,
-Product Owner, Scrum Master y único desarrollador.
+**LuciDan App**: **guía de negocios geolocalizada de Bermejo, Tarija,
+Bolivia** (ciudad fronteriza con Argentina, paso de Aguas Blancas). La app
+responde una sola pregunta central: **"¿qué negocios tengo a mi disposición
+alrededor de mi ubicación?"** — qué venden, dónde están, en qué horario y
+cómo contactarlos. Referencia de producto: **uruku.bo** (directorio web de
+negocios de Bermejo), llevado a app Android nativa. Ya **no es una app de
+turismo**: la entidad `Lugar` (lugares turísticos) fue eliminada del modelo
+(ver 2.2). Proyecto académico y personal de **Marcelo Justiniano**, quien
+asume TODOS los roles: Patrocinador, Product Owner, Scrum Master y único
+desarrollador.
 
 Dos componentes:
-- **App móvil** (Android, Kotlin): mapa interactivo con lugares turísticos
-  Y negocios locales explorables por radio configurable y por
-  categoría/rubro, fichas de detalle (incluye qué vende y teléfono de
-  contacto si es un negocio), rutas, reseñas, favoritos, notificaciones de
-  cercanía.
-- **Panel web** (React + Node.js): gestión de perfil de negocio, planes de
+- **App móvil** (Android, Kotlin): mapa interactivo con los negocios de la
+  ciudad explorables por radio configurable y por rubro, ficha de detalle
+  (qué vende, fotos, horario, teléfono, dirección), cómo llegar, reseñas,
+  favoritos, notificaciones de cercanía.
+- **Panel web** (React + Node.js): gestión de perfiles de negocio, planes de
   publicidad destacada, estadísticas de interacción.
-
-Base de datos única en la nube: **PostgreSQL + PostGIS** (soporte
-geoespacial). En el diseño de la app móvil se usa **Room** como capa local.
 
 Presupuesto total estimado: **Bs 76 375** (ver `docs/03_Acta_de_Constitucion_LuciDan.pdf`
 para el desglose completo). Duración estimada: 9 meses, 3 sprints.
@@ -36,7 +33,9 @@ para el desglose completo). Duración estimada: 9 meses, 3 sprints.
 | Capa | Tecnología |
 |---|---|
 | App móvil | Kotlin, arquitectura por capas (Screen → ViewModel → Repository → DAO) |
-| Persistencia local | Room (SQLite) |
+| Interfaz | Jetpack Compose + Material 3 (tema claro/oscuro, ver sección 3) |
+| Imágenes | Coil 3 (fotos de negocios desde recursos, archivos o URL) |
+| Persistencia local | Room (SQLite), versión 12 |
 | Backend / Panel web | Node.js + React |
 | Base de datos central | PostgreSQL + extensión PostGIS |
 | Mapas y geolocalización | **osmdroid** (tiles de OpenStreetMap) para el mapa + **OSRM** (servidor demo público `router.project-osrm.org`) para calcular rutas — sin API key, sin facturación, sin tarjeta |
@@ -44,10 +43,31 @@ para el desglose completo). Duración estimada: 9 meses, 3 sprints.
 | Autenticación | PBKDF2 + Room local (`AuthService`) — sin servidor externo |
 | Diseño UX/UI | Figma |
 | Gestión de tareas | Trello |
+| Pruebas | JUnit (29 pruebas) + pruebas manuales en teléfono físico (Infinix HOT 11S NFC, ADB inalámbrico) |
 
-**Nota:** no se usa Firebase para Sprint 1/2 (ni Cloud Messaging ni
-Authentication) — login y notificaciones de cercanía son 100% locales. Si
-más adelante se agrega push remoto real, ahí recién se evaluaría Firebase.
+**Nota (actualizada 2026-10-02):** se usa **Cloud Firestore** (plan Spark,
+sin tarjeta) como base compartida de `Negocio`, con Room como caché local
+(`NubeService` + `sincronizar()` en `NegocioRepository`). Esto reemplaza por
+ahora a PostgreSQL + PostGIS y al backend Node. Siguen locales: login
+(PBKDF2 + Room, sin Firebase Authentication), favoritos,
+estadísticas, contrataciones y notificaciones de cercanía. **Las reseñas también viajan a Firestore** (colección `resenas`, autor = hash del correo; Room v12; promedio calculado en el teléfono). Las reglas están
+en `firestore.rules` (solo validan forma: sin Authentication el servidor no
+sabe quién escribe). `app/google-services.json` no se commitea.
+
+**Sección «Info útil» (2026-11-19, EPIC07: HU16 y HU17 + clima) — DESACTIVADA por decisión de Marcelo: se aplicará en una fase posterior.** El código sigue en el repo pero sin ruta ni acceso desde Home (para reactivarla: volver a registrar `INFO_UTIL`/`EDITAR_FRONTERA` en `LuciDanNavHost` y el ícono ⓘ + ítem de menú en `HomeScreen`). Diseño: ícono ⓘ en la barra de Home (y ítem en su menú) →
+`InfoUtilScreen` con tres tarjetas: cambio Bs↔ARS (calculadora en ambos sentidos), clima en Bermejo y paso fronterizo.
+- Firestore `info_util/cambio` = `{compraArsPorBs, ventaArsPorBs, actualizado (ms), adminId}`; tasas en **ARS por 1 Bs**
+  (compra = lo que recibes al cambiar Bs→ARS, venta = lo que cuesta 1 Bs al cambiar ARS→Bs; `compra <= venta`).
+- Firestore `info_util/frontera` = ocho textos (`horarioPaso`, `horarioChalanas`, `tarifasChalanas`, `recomendaciones`,
+  `telPolicia`, `telBomberos`, `telAmbulancia`, `telMigracion`) + `actualizado` + `adminId`; por defecto «Por confirmar».
+- Solo el ADMINISTRADOR ve «Actualizar tasa» y «Editar información» (`EditarFronteraScreen`); lo exige la app, no las reglas.
+- Fuentes externas sin clave: **open.er-api.com** (cruce `rates.ARS / rates.BOB`, solo referencia; atribución «ExchangeRate-API»)
+  y **Open-Meteo** (clima, 3 días; atribución «Open-Meteo.com»). Caché de todo en SharedPreferences `info_util_cache`
+  (no toca Room); el clima se vuelve a bajar si tiene más de 30 min.
+- Código: `ui/infoutil/*`, `data/remote/InfoUtilService.kt`, `data/repository/InfoUtilRepository.kt`,
+  `data/model/InfoUtil.kt`, `util/Cambio.kt`, `util/ClimaCodigos.kt`, `util/Tiempo.kt`.
+- `firestore.rules`: `info_util/{doc}` lectura pública; create/update solo con forma válida (`cambioValido`, `fronteraValida`);
+  delete prohibido. También cubre `resenas` (solo create).
 
 ### 2.1 Decisión de arquitectura: osmdroid en vez de Google Maps Platform
 
@@ -70,42 +90,43 @@ Directions API). Se cambió a **osmdroid + OSRM** porque:
 
 **Impacto en el código:** solo afecta la implementación interna de
 `HomeScreen`/`DetalleScreen` (renderizado del mapa) y `RutaService`
-(cálculo de ruta). Los nombres de clases, el modelo de datos (`Lugar`,
-`Negocio`, etc.) y el resto del backlog **no cambian**.
+(cálculo de ruta). Los nombres de clases, el modelo de datos (`Negocio`,
+etc.) y el resto del backlog **no cambian**.
 
-### 2.2 Decisión de producto: comercio local como eje central
+### 2.2 Decisión de producto: guía 100% de negocios (actualizado 2026-11-14)
 
-A pedido de Marcelo (validado con un compañero y coherente con las
-entrevistas de `docs/05_Epicas_LuciDan.docx`, donde una dueña de
-restaurante y la observación de campo en el paso fronterizo de Aguas
-Blancas ya señalaban la falta de un directorio de negocios), se reposicionó
-la app: **los negocios locales pasan a ser un punto explorable de igual
-jerarquía que los lugares turísticos desde el Sprint 1**, no algo que
-aparece recién al registrarse en Sprint 2. En concreto:
+A pedido de Marcelo, la app dejó de ser de turismo y pasó a ser una **guía
+pura de negocios cercanos**, tomando como referencia el sitio **uruku.bo**
+("toda tu ciudad en un solo lugar", directorio de Bermejo). Cambios de
+modelo respecto a la versión anterior:
 
-- HU01 (explorar mapa) y HU02 (filtrar categoría) ahora muestran y filtran
-  **lugares turísticos Y negocios publicados** juntos, diferenciados por
-  ícono, con el mismo radio configurable.
-- HU04 (ficha de detalle) y HU05 (cómo llegar) aplican igual a un lugar que
-  a un negocio.
-- La clase `Negocio` (sección 4) suma dos campos: `descripcion` (qué vende
-  u ofrece) y `telefono` (contacto), para que un visitante pueda saber qué
-  hay y cómo comunicarse, no solo que el negocio existe.
-- El registro de negocio (HU08, Sprint 2) sigue siendo donde el dueño carga
-  y mantiene esos datos — eso no cambia — pero ahora la ficha completa
-  (incluida descripción y teléfono) se pensó desde el día uno para que
-  cualquier visitante la vea, no solo el dueño.
-
-Ver `docs/08_Backlog_Optimizado_LuciDan.xlsx` (HU01/HU02/HU08 actualizadas)
-y `docs/11_Backlog_del_Sprint_1_LuciDan.xlsx` /
-`docs/12_Backlog_del_Sprint_2_LuciDan.xlsx` (tareas técnicas ajustadas) para
-el detalle exacto.
+- **Se eliminó la clase `Lugar`** (lugares turísticos) y la tabla `lugares`.
+  La única entidad explorable en el mapa es `Negocio`.
+- `Negocio` ahora lleva lo que antes estaba repartido con `Lugar`:
+  `descripcion` (qué vende u ofrece), `telefono` (contacto), `latitud`,
+  `longitud`, `direccion`, `horario`, `fotos`, `promedioCalificacion` y el
+  método `calcularDistancia(origen)`.
+- `Resena` y `Favorito` ahora se relacionan con `Negocio` (antes con
+  `Lugar`): se reseñan negocios y se guardan negocios favoritos.
+- El enum `RolUsuario` cambió `TURISTA` → **`VISITANTE`** (usuario común
+  que explora la guía).
+- Un usuario puede tener **0 o más negocios** (0..*): la pantalla de
+  HU08/HU09 es "Mis negocios" (lista + agregar), no un perfil único.
+- Solo los negocios con `estado = PUBLICADO` aparecen en la exploración
+  del mapa (HU01/HU02/HU03).
+- Se agregó la **EPIC07 (Futuro, post-Sprint 3)** inspirada en uruku.bo:
+  HU15 ofertas del día, HU16 tipo de cambio Bs↔ARS con calculadora, HU17
+  información del paso fronterizo. No entra en los sprints actuales.
 
 ## 3. Sistema de diseño (branding, para el panel web y cualquier UI)
 
 - Maroon principal: `#632423`
 - Gris claro de fondo: `#F2F2F2`
 - Crema/acento: `#FFF6F0`
+- **Tema de la app (Material 3, 2026-11-14):** esquemas claro/oscuro generados con material-color-utilities desde
+  `#632423` (`ui/theme/Color.kt` + `Theme.kt`; fuente en `design/theme/`). Color dinámico desactivado a propósito.
+  Todo color sale de `MaterialTheme.colorScheme` (tarjetas y fondos elevados: roles `surfaceContainer*`); la única
+  excepción son los colores por rubro (`util/RubroVisual.kt`), armonizados con la marca y fijos para el mapa.
 - Tipografía: Arial (documentos); en el prototipo de UI se usó Fraunces +
   Work Sans (paleta coral/teal/gold) — ver `prototype/`.
 
@@ -114,16 +135,16 @@ el detalle exacto.
 Fuente completa en `diagrams/00_Diagrama_de_Clases.puml`. Clases principales:
 
 - **Usuario**: id, correo, contrasenaHash, fechaRegistro, rol (enum
-  `RolUsuario`: TURISTA, NEGOCIO, ADMINISTRADOR), notificacionesActivas.
-- **Lugar**: id, nombre, categoria, latitud, longitud, descripcion, horario,
-  rangoPrecio, fotos, promedioCalificacion.
+  `RolUsuario`: VISITANTE, NEGOCIO, ADMINISTRADOR), notificacionesActivas.
+- **Negocio**: id, nombre, categoria (enum `Rubro`: GASTRONOMIA, FARMACIA_SALUD, MODA_ROPA, CAMBIO_MONEDA, TRANSPORTE, ALOJAMIENTO, ABARROTES, TECNOLOGIA, SERVICIOS, OTRO), descripcion (qué vende),
+  telefono, latitud, longitud, direccion, horario, fotos,
+  promedioCalificacion, estado (enum `EstadoNegocio`: PENDIENTE, PUBLICADO,
+  SUSPENDIDO), destacado. Relacionado **1 a muchos** con el Usuario dueño
+  (un usuario puede registrar varios negocios). Método
+  `calcularDistancia(origen)`.
 - **Resena**: id, calificacion (1-5), comentario, fecha. Relacionada a
-  Usuario y Lugar.
-- **Favorito**: id, fechaGuardado. Relaciona Usuario ↔ Lugar.
-- **Negocio**: id, nombre, categoria, **descripcion** (qué vende/ofrece),
-  **telefono** (contacto), ubicacion, horario, fotos, estado (enum
-  `EstadoNegocio`: PENDIENTE, PUBLICADO, SUSPENDIDO), destacado.
-  Relacionado 1 a 1 con el Usuario dueño.
+  Usuario y Negocio.
+- **Favorito**: id, fechaGuardado. Relaciona Usuario ↔ Negocio.
 - **PlanPublicidad**: id, nombre, duracionDias, precio, beneficios.
 - **ContratacionPublicidad**: id, fechaInicio, fechaVencimiento, activo.
   Relaciona Negocio ↔ PlanPublicidad.
@@ -131,22 +152,24 @@ Fuente completa en `diagrams/00_Diagrama_de_Clases.puml`. Clases principales:
   CLIC_COMO_LLEGAR), fecha.
 
 Esquema de base de datos equivalente (ER) en
-`diagrams/00b_Diagrama_Entidad_Relacion.puml`: tablas `usuarios`, `lugares`,
-`resenas`, `favoritos`, `negocios` (con `descripcion` y `telefono`),
-`planes_publicidad`, `contrataciones_publicidad`, `estadisticas_negocio`.
+`diagrams/00b_Diagrama_Entidad_Relacion.puml`: tablas `usuarios`,
+`negocios` (con descripcion, telefono, latitud, longitud, direccion),
+`resenas`, `favoritos`, `planes_publicidad`, `contrataciones_publicidad`,
+`estadisticas_negocio`. **Ya no existe la tabla `lugares`.**
 
-## 5. Backlog del Producto (14 historias de usuario, 6 épicas)
+## 5. Backlog del Producto (14 HU en sprints + 3 HU futuras, 7 épicas)
 
 Fuente: `docs/08_Backlog_Optimizado_LuciDan.xlsx`.
 
 | Épica | Historias | Sprint |
 |---|---|---|
-| EPIC01 — Exploración de Lugares y Negocios | HU01, HU02, HU03 | 1 |
-| EPIC02 — Detalle y Rutas (lugares y negocios) | HU04, HU05 | 1 |
+| EPIC01 — Exploración de Negocios | HU01, HU02, HU03 | 1 |
+| EPIC02 — Detalle y Rutas | HU04, HU05 | 1 |
 | EPIC03 — Reseñas y Favoritos | HU06, HU07 | 1 |
-| EPIC04 — Registro y Gestión de Negocios (perfil, qué vende, contacto) | HU08, HU09 | 2 |
+| EPIC04 — Registro y Gestión de Negocios (qué vende, contacto) | HU08, HU09 | 2 |
 | EPIC05 — Publicidad y Estadísticas | HU10, HU11 | 3 |
 | EPIC06 — Registro/Seguridad/Notificaciones | HU12 (Sprint 1), HU13 (Sprint 2), HU14 (Sprint 3) | — |
+| EPIC07 — Información útil de la ciudad (ofertas, cambio, frontera) | HU15, HU16, HU17 | Futuro |
 
 ## 6. Sprints y tareas técnicas (Backlogs de Sprint)
 
@@ -155,13 +178,14 @@ Fuente completa con horas estimadas por tarea:
 `docs/12_Backlog_del_Sprint_2_LuciDan.xlsx`,
 `docs/13_Backlog_del_Sprint_3_LuciDan.xlsx`.
 
-### Sprint 1 (01/10/2026–20/01/2027, 39 SP, 140 h, 35 tareas)
-HU01 Explorar mapa (lugares y negocios) · HU02 Filtrar categoría/rubro ·
-HU03 Buscar desde punto · HU04 Ficha de detalle · HU05 Trazar ruta ·
-HU06 Calificar/reseñar · HU07 Favoritos · HU12 Registro/login.
+### Sprint 1 (01/10/2026–20/01/2027, 39 SP, 135 h, 35 tareas)
+HU01 Explorar mapa de negocios · HU02 Filtrar por rubro ·
+HU03 Buscar desde punto · HU04 Ficha de detalle del negocio ·
+HU05 Trazar ruta · HU06 Calificar/reseñar · HU07 Favoritos ·
+HU12 Registro/login.
 
-### Sprint 2 (21/01/2027–17/03/2027, 13 SP, 57 h, 14 tareas)
-HU08 Registrar negocio (incluye descripción y teléfono) ·
+### Sprint 2 (21/01/2027–17/03/2027, 13 SP, 55 h, 14 tareas)
+HU08 Registrar negocio (qué vende, teléfono, ubicación) ·
 HU09 Editar perfil de negocio · HU13 Notificaciones de cercanía.
 
 ### Sprint 3 (18/03/2027–09/06/2027, 18 SP, 66 h, 17 tareas)
@@ -175,13 +199,16 @@ rama (ej. `feature/TA-01-03-mapa-marcadores`).
 ## 7. Diagramas de secuencia (11, uno por tarea "diagrama de secuencia" del backlog)
 
 Todos en `diagrams/*.puml` (formato PlantUML, texto plano — léelos
-directamente para replicar la lógica exacta en código):
+directamente para replicar la lógica exacta en código). **Los nombres de
+archivo se mantienen por trazabilidad histórica, pero el contenido ya está
+actualizado al modelo de negocios** (donde el nombre del archivo dice
+"Lugares", el diagrama por dentro trabaja con negocios):
 
-1. `S1_DS01_Carga_Lugares_Cercanos.puml` — HU01 (carga lugares Y negocios)
+1. `S1_DS01_Carga_Lugares_Cercanos.puml` — HU01 (carga de negocios cercanos)
 2. `S1_DS02_Busqueda_Punto_Mapa.puml` — HU03
-3. `S1_DS03_Ficha_Detalle.puml` — HU04
-4. `S1_DS04_Trazado_Ruta.puml` — HU05
-5. `S1_DS05_Registro_Resena.puml` — HU06
+3. `S1_DS03_Ficha_Detalle.puml` — HU04 (ficha del negocio)
+4. `S1_DS04_Trazado_Ruta.puml` — HU05 (ruta hacia un negocio, OSRM)
+5. `S1_DS05_Registro_Resena.puml` — HU06 (reseña sobre un negocio)
 6. `S1_DS06_Registro_Login.puml` — HU12
 7. `S2_DS07_Registro_Negocio.puml` — HU08 (incluye descripción y teléfono)
 8. `S2_DS08_Notificacion_Cercania.puml` — HU13 (notificación local, sin Firebase)
@@ -189,14 +216,19 @@ directamente para replicar la lógica exacta en código):
 10. `S3_DS10_Estadisticas_Negocio.puml` — HU11
 11. `S3_DS11_Gestion_Roles.puml` — HU14
 
+Diagramas adicionales (post-migración, 15/11/2026), en `diagrams/` y reunidos en
+`docs/16_Diagramas_Actividad_y_Secuencia_Adicionales_LuciDan.pdf`:
+
+- `AD01_Explorar_y_Contactar_Negocio.puml` — actividad: permiso de ubicación, radio/rubro/búsqueda, ficha, WhatsApp o llamada, cómo llegar, favorito/reseña.
+- `AD02_Registrar_y_Publicar_Negocio.puml` — actividad: formulario (teléfono opcional, GPS, foto), estado PENDIENTE y publicación o suspensión por el administrador.
+- `PM_DS12_Carga_Inicial_y_Sincronizacion.puml` — secuencia: semilla (INSERT OR IGNORE), `sincronizar()` con Firestore y política de no borrar los ejemplos.
+- `PM_DS13_Foto_y_Registro_de_Negocio.puml` — secuencia: elegir foto de la galería, validar, guardar en Room como PENDIENTE y subir a Firestore.
+
 Cada uno define los nombres exactos de Screen / ViewModel / Repository /
 Service que debe usar el código (por ejemplo `HomeScreen`, `HomeViewModel`,
-`LugarRepository`, `NegocioRepository`, `LocationService`) — mantener esos
-nombres para que el código coincida con la documentación entregada.
-**Nota:** donde el diagrama menciona "Google Maps SDK" o "Directions API"
-en el flujo de `RutaService`, usar en su lugar osmdroid / OSRM según la
-sección 2.1 — la lógica y los nombres de los pasos no cambian, solo el
-proveedor de mapas/rutas.
+`NegocioRepository`, `LocationService`) — mantener esos nombres para que el
+código coincida con la documentación entregada. El repositorio central de
+datos de la app es `NegocioRepository` (ya no existe `LugarRepository`).
 
 ## 8. Estado actual del proyecto
 
@@ -204,29 +236,48 @@ proveedor de mapas/rutas.
       Constitución, Registro de Interesados, Épicas, Equipo Scrum, Plan de
       Capacitación, Backlog Optimizado, Planificación de Lanzamiento,
       Requisitos de Recursos).
-- [x] Diagrama de Casos de Uso, Diagrama de Clases, Diagrama ER, 11
+- [x] Diagrama de Casos de Uso (17 casos), Diagrama de Clases, Diagrama ER, 11
       Diagramas de Secuencia.
 - [x] Backlogs de Sprint 1, 2 y 3 con tareas y estimaciones.
 - [x] Prototipo de UI/UX (9 pantallas, ver `prototype/`).
 - [x] Decisión de arquitectura: mapas/rutas con osmdroid + OSRM (ver 2.1),
       por bloqueo de facturación de Google Cloud.
-- [x] Decisión de producto: comercio local como eje central, negocios
-      explorables desde Sprint 1 (ver 2.2).
-- [ ] **Falta actualizar con el nuevo enfoque:** `docs/01_Caso_de_Negocio_LuciDan.pdf`
-      y `docs/02_Vision_del_Proyecto_LuciDan.pdf` (solo existen en PDF, sin
-      fuente editable) — pendiente de reescritura si Marcelo lo pide.
-- [ ] **Código del proyecto Android Studio: sin empezar.** Este es el
-      siguiente paso — crear el proyecto, el modelo de datos (Room) según
-      la sección 4, y las pantallas del Sprint 1 en orden de dependencia
-      (Registro/Login → Home/Mapa con lugares y negocios → Detalle →
-      Reseñas → Favoritos).
+- [x] Decisión de producto (2026-11-14): guía 100% de negocios estilo
+      uruku.bo, sin lugares turísticos (ver 2.2) — diagramas y backlogs ya
+      actualizados.
+- [x] Código migrado al modelo solo-negocios (2026-11-14): sin `Lugar`/`LugarRepository`/tabla `lugares`;
+      `Rubro` reemplaza a `CategoriaLugar`; `Negocio` lleva `direccion` y `promedioCalificacion`; `Resena` y
+      `Favorito` usan `negocioId`; `RolUsuario.VISITANTE`; Room **v11** (migraciones 9→10 y 10→11). La semilla sale de
+      `docs/negocios_bermejo.txt` (12 negocios reales de Bermejo; la copia a assets la hace la tarea Gradle `copiarSemilla`).
+- [x] Post-migración (2026-11-14), detalle en `docs/Modificaciones_Post_Cambio_de_Vision_LuciDan.txt` y
+      `docs/15_Registro_de_Cambios_Post_Migracion_LuciDan.pdf`: fotos de los 12 negocios (`res/drawable-nodpi`, Coil 3)
+      con placeholder por rubro; contacto por WhatsApp o llamada (`util/Contacto.kt`); teléfono opcional al registrar;
+      login con ojo de contraseña y logo; rediseño Material 3 con auditoría de accesibilidad; selector de tema
+      claro/oscuro (menú de Home → Tema); reglas de Firestore actualizadas; 12 pruebas JUnit en verde.
+- [x] Logo e ícono nuevos (2026-11-17, `icon/nuevo/`): lanzador adaptativo + monocromo + PNG de respaldo (minSdk 24), logo
+      horizontal en login/registro/recuperar (tarjeta clara fija), `ic_notificacion` vectorial y Play Store 512 en
+      `icon/nuevo/exportados/`. Marcadores del mapa estilo A con agrupación (osmbonuspack, JitPack).
+- [ ] Pendientes conocidos: commit en git sin hacer; re-probar «Cómo llegar», panel de administración, planes y
+      estadísticas; probar físicamente la notificación de cercanía (HU13); publicar el negocio PENDIENTE desde el
+      panel de administración; reemplazar las fotos por propias/autorizadas antes de cualquier publicación real;
+      probar la notificación de cercanía con el ícono nuevo (`ic_notificacion`); las fotos de galería no se comparten entre teléfonos.
+- [x] Documentación RUP actualizada a la visión de guía de negocios
+      (14/11/2026): Caso de Negocio, Visión, Acta de Constitución, Registro
+      de Interesados, Épicas, Requisitos de Recursos, Equipo Scrum, Plan de
+      Capacitación, Planificación de Lanzamiento y Diagrama de Caso de Uso
+      (fuente editable en `diagrams/10_Diagrama_Caso_de_Uso.puml`). La
+      semilla de datos de ejemplo es `docs/negocios_bermejo.txt`
+      (reemplaza a `lugares_bermejo.txt`, que puede eliminarse). Actualizados el 15/11/2026: Acta de Constitución, Requisitos de
+      Recursos y Plan de Capacitación (v2.1); Backlog Optimizado (hoja «Cambios Post-Migración»); Backlogs de Sprint 1 y 2
+      (tareas de ficha y registro); diagramas de clases, ER, secuencia DS03 y DS07, y Casos de Uso con UC16 (contactar
+      por WhatsApp) y UC17 (tema). Sin cambios: Caso de Negocio, Visión, Interesados, Épicas, Equipo Scrum y Lanzamiento.
 - [ ] Backend / panel web (Node.js + React): sin empezar.
 
 ## 9. Convenciones al programar
 
 - Idioma del código: nombres de clases/variables en español cuando ya están
-  fijados por los diagramas (`Lugar`, `Negocio`, `Resena`...); nombres de
-  paquete/carpeta en inglés estándar de Android (`com.lucidan.app...`).
+  fijados por los diagramas (`Negocio`, `Resena`, `Favorito`...); nombres de
+  paquete/carpeta en inglés estándar de Android (paquete real: `dev.justinianomarcelo.lucidanapp`).
 - Seguir estrictamente los nombres de clases y relaciones del diagrama de
   clases (sección 4) al crear las entidades de Room.
 - Seguir el flujo exacto de cada diagrama de secuencia (sección 7) al
@@ -235,9 +286,15 @@ proveedor de mapas/rutas.
   Notificaciones y autenticación: locales, sin Firebase (sección 2). Si en
   el futuro se suma algún servicio con API key, va en `local.properties` /
   variables de entorno, nunca commiteada.
-- La exploración (HU01/HU02), la ficha de detalle (HU04) y "cómo llegar"
-  (HU05) deben tratar `Lugar` y `Negocio` como el mismo tipo de punto en el
-  mapa, no como features separadas (sección 2.2).
+- La exploración (HU01/HU02/HU03) muestra **solo negocios con estado
+  PUBLICADO**; los pendientes o suspendidos no aparecen en el mapa.
+- **Un usuario puede tener varios negocios (0..\*, sección 4):** la pantalla
+  de HU08/HU09 debe ser "Mis negocios" (lista con botón de agregar y cada
+  negocio editable por separado), no un formulario de perfil único. La
+  tabla `negocios` ya soporta esto porque `usuario_id` es una FK simple sin
+  restricción de unicidad — no requiere cambios de esquema, solo de UI y de
+  las consultas en `NegocioRepository` (traer lista por `usuario_id` en vez
+  de un solo registro).
 - Ir por historias de usuario completas (no por capas sueltas), en el orden
   del Sprint 1 listado en la sección 6.
 
@@ -246,7 +303,11 @@ proveedor de mapas/rutas.
 ```
 LuciDanApp/
 ├── CLAUDE.md                         (este archivo)
-├── docs/                             documentación RUP/Scrum completa (PDF/DOCX/XLSX/PPTX)
+├── docs/                             documentación RUP/Scrum completa (PDF/DOCX/XLSX/PPTX),
+│                                     negocios_bermejo.txt (semilla) y registro de cambios post-migración
 ├── diagrams/                         diagramas UML en PlantUML (.puml, texto plano)
+├── design/theme/                     paleta Material 3 generada desde #632423
+├── imagenes_negocio/                 fotos originales de los 12 negocios (la app usa copias en res/drawable-nodpi)
+├── firestore.rules                   reglas de Cloud Firestore (publicar en la consola de Firebase)
 └── prototype/                        exportación del prototipo de UI/UX (PDF + capturas PNG)
 ```

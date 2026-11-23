@@ -19,7 +19,7 @@ skinparam titleFontStyle bold
 
 title
 Diagrama de Clases — LuciDan App
-Modelo de dominio, Sprints 1-3
+Guía de negocios de Bermejo, Sprints 1-3
 end title
 
 class Usuario {
@@ -35,23 +35,47 @@ class Usuario {
 }
 
 enum RolUsuario {
-  TURISTA
+  VISITANTE
   NEGOCIO
   ADMINISTRADOR
 }
 
-class Lugar {
+class Negocio {
   -id: Long
   -nombre: String
-  -categoria: String
+  -categoria: Rubro
+  -descripcion: String
+  -telefono: String
   -latitud: Double
   -longitud: Double
-  -descripcion: String
+  -direccion: String
   -horario: String
-  -rangoPrecio: String
   -fotos: List<String>
   -promedioCalificacion: Double
+  -estado: EstadoNegocio
+  -destacado: Boolean
+  +registrar()
+  +editarPerfil()
   +calcularDistancia(origen)
+}
+
+enum Rubro {
+  GASTRONOMIA
+  FARMACIA_SALUD
+  MODA_ROPA
+  CAMBIO_MONEDA
+  TRANSPORTE
+  ALOJAMIENTO
+  ABARROTES
+  TECNOLOGIA
+  SERVICIOS
+  OTRO
+}
+
+enum EstadoNegocio {
+  PENDIENTE
+  PUBLICADO
+  SUSPENDIDO
 }
 
 class Resena {
@@ -65,25 +89,6 @@ class Resena {
 class Favorito {
   -id: Long
   -fechaGuardado: Date
-}
-
-class Negocio {
-  -id: Long
-  -nombre: String
-  -categoria: String
-  -ubicacion: String
-  -horario: String
-  -fotos: List<String>
-  -estado: EstadoNegocio
-  -destacado: Boolean
-  +registrar()
-  +editarPerfil()
-}
-
-enum EstadoNegocio {
-  PENDIENTE
-  PUBLICADO
-  SUSPENDIDO
 }
 
 class PlanPublicidad {
@@ -116,10 +121,11 @@ enum TipoEvento {
 Usuario "1" *-- "1" RolUsuario
 Usuario "1" -- "0..*" Resena : escribe >
 Usuario "1" -- "0..*" Favorito : guarda >
-Favorito "0..*" -- "1" Lugar
-Lugar "1" -- "0..*" Resena : recibe >
-Usuario "1" -- "0..1" Negocio : posee >
+Favorito "0..*" -- "1" Negocio
+Negocio "1" -- "0..*" Resena : recibe >
+Usuario "1" -- "0..*" Negocio : posee >
 Negocio "1" *-- "1" EstadoNegocio
+Negocio "1" *-- "1" Rubro
 Negocio "1" -- "0..*" ContratacionPublicidad : contrata >
 PlanPublicidad "1" -- "0..*" ContratacionPublicidad
 Negocio "1" -- "0..*" EstadisticaNegocio : genera >
@@ -127,10 +133,10 @@ EstadisticaNegocio "1" *-- "1" TipoEvento
 
 legend right
   |= Historia |= Clase |
-  | HU01/HU04 | Lugar |
+  | HU01-HU05 | Negocio, Rubro (exploración, ficha, ruta) |
   | HU06 | Resena |
   | HU07 | Favorito |
-  | HU08/HU09 | Negocio |
+  | HU08/HU09 | Negocio (registro y gestión) |
   | HU10 | PlanPublicidad, ContratacionPublicidad |
   | HU11 | EstadisticaNegocio |
   | HU12/HU14 | Usuario, RolUsuario |

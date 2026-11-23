@@ -28,8 +28,10 @@ class AuthService(private val usuarioRepository: UsuarioRepository) {
         return hashCalculado.contentEquals(hashEsperado)
     }
 
+    /** TA-14-03: una cuenta suspendida por el administrador no puede iniciar sesión. */
     suspend fun autenticar(correo: String, contrasena: String): Usuario? {
         val usuario = usuarioRepository.buscarPorCorreo(correo) ?: return null
+        if (!usuario.activo) return null
         return if (verificarContrasena(contrasena, usuario.contrasenaHash)) usuario else null
     }
 

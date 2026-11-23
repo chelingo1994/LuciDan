@@ -32,26 +32,26 @@ skinparam noteBackgroundColor #FFF9E8
 skinparam noteBorderColor #8A7A6C
 
 
-title DS05 — Registro de una reseña (HU06)
+title DS05 — Registro de una reseña sobre un negocio (HU06)
 autonumber
 actor "Usuario Registrado" as U
 participant "DetalleScreen" as UI
 participant "ResenaViewModel" as VM
 participant "ResenaRepository" as REPO
-participant "LugarRepository" as LREPO
+participant "NegocioRepository" as NREPO
 database "Base de Datos\n(Room)" as DB
 
 U -> UI : abrir formulario de reseña
 UI -> VM : enviarResena(calificacion, comentario)
 VM -> VM : validar sesión iniciada
 alt sesión válida
-  VM -> REPO : guardarResena(usuarioId, lugarId, calificacion, comentario)
+  VM -> REPO : guardarResena(usuarioId, negocioId, calificacion, comentario)
   REPO -> DB : INSERT INTO resenas
   DB --> REPO : ok
-  REPO -> LREPO : recalcularPromedio(lugarId)
-  LREPO -> DB : UPDATE lugares SET promedio_calificacion
-  DB --> LREPO : ok
-  LREPO --> REPO : promedio actualizado
+  REPO -> NREPO : recalcularPromedio(negocioId)
+  NREPO -> DB : UPDATE negocios SET promedio_calificacion
+  DB --> NREPO : ok
+  NREPO --> REPO : promedio actualizado
   REPO --> VM : reseña guardada
   VM --> UI : mostrar confirmación
   UI --> U : reseña publicada

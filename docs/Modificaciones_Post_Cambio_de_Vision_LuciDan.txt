@@ -1,0 +1,361 @@
+============================================================================
+LUCIDAN APP - REGISTRO DE MODIFICACIONES POSTERIORES AL CAMBIO DE VISION
+============================================================================
+Proyecto : LuciDan App (guía de negocios geolocalizada de Bermejo, Tarija)
+Autor    : Marcelo Justiniano (todos los roles); código asistido por Claude Code
+Fecha    : 14/11/2026
+Propósito: dejar constancia, para la documentación del proyecto, de todo lo
+           que se modificó en el código y en los datos DESPUÉS de la decisión
+           de producto del 14/11/2026 (la app deja de ser de turismo y pasa a
+           ser una guía 100% de negocios, ver CLAUDE.md sección 2.2).
+Alcance  : solo lo hecho a partir de esa decisión. Los Sprints 1 a 3 previos
+           (HU01-HU14) no se describen aquí salvo donde fueron adaptados.
+
+Pruebas  : todo se compiló y se probó en un teléfono físico Infinix HOT 11S
+           NFC (por conexión inalámbrica ADB), no en emulador. Hay 12 pruebas
+           unitarias (JUnit) que pasan.
+
+----------------------------------------------------------------------------
+INDICE
+----------------------------------------------------------------------------
+ 1. Migración al modelo "solo negocios"
+ 2. Base de datos local (Room) y sincronización con Firestore
+ 3. Carga inicial de negocios (semilla) desde docs/negocios_bermejo.txt
+ 4. Fotos de los negocios y placeholder por rubro
+ 5. Contacto por WhatsApp / llamada
+ 6. Registro de negocios: teléfono opcional y corrección de la foto
+ 7. Autenticación: ver contraseña, logo y rediseño de cabeceras
+ 8. Rediseño Material 3 (tema, colores, auditoría de accesibilidad)
+ 9. Selector de tema claro / oscuro
+10. Problemas encontrados y cómo se resolvieron
+11. Archivos nuevos, modificados y eliminados
+12. Pendientes y limitaciones conocidas
+
+============================================================================
+1. MIGRACIÓN AL MODELO "SOLO NEGOCIOS"
+============================================================================
+Se eliminó todo lo relativo a lugares turísticos:
+ - Eliminadas las clases Lugar, LugarDao, LugarRepository y LugaresSemilla, y
+   la tabla "lugares". La única entidad explorable es Negocio.
+ - CategoriaLugar fue reemplazada por el enum Rubro, con 10 valores:
+   GASTRONOMIA, FARMACIA_SALUD, MODA_ROPA, CAMBIO_MONEDA, TRANSPORTE,
+   ALOJAMIENTO, ABARROTES, TECNOLOGIA, SERVICIOS, OTRO.
+ - Negocio: el campo "ubicacion" pasó a "direccion" y se agregó
+   "promedioCalificacion" (promedio de reseñas locales). Conserva descripcion,
+   telefono, latitud, longitud, horario, fotos, estado y destacado.
+ - Resena y Favorito ahora apuntan a Negocio (columna negocioId, con clave
+   foránea a la tabla negocios).
+ - RolUsuario.TURISTA pasó a VISITANTE.
+ - La exploración (mapa y lista) muestra solo negocios con estado PUBLICADO.
+ - Las dos pantallas de detalle (una de lugar y otra de negocio) se fusionaron
+   en una sola: DetalleScreen. Muestra foto, rubro, calificación, descripción,
+   horario, dirección, contacto, "Cómo llegar" (ruta OSRM), reseñas y favorito,
+   y registra vistas y clics de "Cómo llegar" para las estadísticas (HU11).
+ - Las notificaciones de cercanía (HU13) apuntan ahora a negocios destacados:
+   NotificationService.notificarNegocioCercano, GeofenceManager recibe
+   negocios, y la intención usa EXTRA_NEGOCIO_ID.
+ - "Mis negocios" (HU08/HU09) ya permitía 0..* negocios por usuario; se adaptó
+   al modelo nuevo.
+ - Textos de pantallas actualizados (por ejemplo "Los negocios de Bermejo, a un
+   toque.").
+
+============================================================================
+2. BASE DE DATOS LOCAL (ROOM) Y SINCRONIZACIÓN CON FIRESTORE
+============================================================================
+Versiones de Room
+ - v10: migración 9 -> 10. Elimina "lugares"; descarta reseñas y favoritos que
+   apuntaban a lugares (ya no había a qué asociarlos) y recrea esas tablas con
+   negocioId; reconstruye "negocios" (ubicacion -> direccion, agrega
+   promedioCalificacion, categorías antiguas -> OTRO si no existen en Rubro);
+   convierte rol TURISTA -> VISITANTE. Contrataciones de publicidad y
+   estadísticas se respaldan y restauran para que el borrado en cascada de la
+   clave foránea no las pierda.
+ - v11: migración 10 -> 11. Borra los negocios de ejemplo antiguos (los que
+   tienen dueño "semilla") porque el archivo de datos pasó a contener los
+   negocios reales con ids nuevos.
+ - Verificado en el teléfono sobre una base real v9: se conservaron las 8
+   contrataciones y las 9 estadísticas existentes.
+
+Firestore (plan Spark, sin tarjeta)
+ - NubeService ya no maneja la colección "lugares". Lee y escribe solo
+   "negocios". Los documentos antiguos con categoría inexistente se leen como
+   OTRO, y el campo antiguo "ubicacion" se lee como "direccion".
+ - firestore.rules actualizado: lista de rubros nuevos, campo direccion
+   opcional/validado, se quitaron las reglas de "lugares". DEBE publicarse en
+   la consola de Firebase (ya fue publicado por el autor y se comprobó que no
+   hay errores PERMISSION_DENIED).
+ - NegocioRepository.sincronizar: el promedio de calificación y las fotos
+   locales no se pisan con las de la nube (las reseñas son locales; las fotos
+   de los negocios de ejemplo vienen dentro de la app).
+ - Política para los negocios de ejemplo (dueño "semilla"): si faltan en la
+   nube se vuelven a subir y NUNCA se borran por sincronización, porque no se
+   puede distinguir "borrado por un administrador" de "la subida falló".
+
+============================================================================
+3. CARGA INICIAL DE NEGOCIOS (SEMILLA) DESDE docs/negocios_bermejo.txt
+============================================================================
+Formato (una línea por negocio, campos separados por "|"):
+  nombre | rubro | latitud | longitud | descripcion | telefono | direccion |
+  horario | destacado [| foto]
+ - Las líneas que empiezan con # se ignoran. Telefono, direccion y foto pueden
+   ir vacíos. El décimo campo (foto) es opcional.
+ - Un rubro desconocido se carga como OTRO. Una línea inválida se omite sin
+   mover los ids de las demás.
+Funcionamiento
+ - NegociosSemilla.kt parsea el archivo. Una tarea Gradle ("copiarSemilla")
+   copia docs/negocios_bermejo.txt a app/src/main/assets/ en cada build (la
+   copia está en .gitignore); así basta con editar el .txt de docs.
+ - Los ids son ID_BASE (4.100.000.000.000.000) + posición en el archivo: iguales
+   en todos los teléfonos (no duplica en Firestore) y por encima de los ids
+   pequeños del autoincremento antiguo y por debajo del tope de 2^52 de los
+   ids de negocios registrados desde la app.
+ - Todos se cargan con estado PUBLICADO y dueño "semilla". "Destacado = SI"
+   registra la geocerca de la notificación de cercanía (HU13).
+ - Se insertan con INSERT OR IGNORE en cada apertura de la base: el primer
+   arranque los carga y los siguientes no duplican. Un negocio agregado al
+   final del archivo aparece en la siguiente apertura. Editar una línea ya
+   cargada NO actualiza los teléfonos que ya la tienen.
+Datos actuales: 12 negocios reales de Bermejo (AURORA 2, Boutique Tatiana, Casa
+de ropa cama, Comercial Samuel importados, Farmacia Patogonia, Librería ISABELLA
+MAITE, Pastelería Antójitos, Sumak Bazar, WILLY, A&M LENCERIA, Casa de Cambio y
+Banco Fie). Los datos se tomaron del directorio público uruku.bo y deben
+verificarse con cada negocio antes de cualquier uso real.
+Pruebas: NegociosSemillaTest (6 pruebas) incluye una que comprueba que cada
+foto nombrada en el .txt existe como recurso de la app.
+
+============================================================================
+4. FOTOS DE LOS NEGOCIOS Y PLACEHOLDER POR RUBRO
+============================================================================
+ - Diseño de fotos de la app (se respetó): Negocio.fotos es una lista de
+   textos; Coil 3 las carga; FotoNegocio.modelo() resuelve un nombre simple
+   como recurso drawable, una ruta absoluta como archivo y http(s) como URL.
+ - Las 12 fotos de los negocios de ejemplo se copiaron a
+   app/src/main/res/drawable-nodpi/ con nombres seguros (aurora_2.jpg,
+   boutique_tatiana.jpg, a_m_lenceria.jpg, etc.). La carpeta original
+   imagenes_negocio/ quedó intacta. No se recomprimieron (todas miden 1280 px o
+   menos; suman 2,3 MB, el APK crece unos 2,4 MB).
+ - Se asigna la foto a los negocios ya cargados en una base existente sin
+   necesidad de migración (UPDATE de fotos vacías al abrir la base).
+ - Placeholder por rubro (util/RubroVisual.kt): sin foto se muestra un fondo
+   del color del rubro con su ícono (cubiertos de comida, farmacia, ropa,
+   cambio de moneda, bus, hotel, canasta, dispositivos, banco, tienda). El
+   color del rubro también tiñe el marcador del mapa.
+ - Las fotos aparecen en: lista y tarjeta de Home, ficha de Detalle y tarjeta
+   de "Mis negocios" (esta última agregada). El detalle muestra solo la primera
+   foto (no hay carrusel).
+ - Verificado en el teléfono: los 12 negocios muestran su foto.
+ - Nota: las fotos de uruku.bo tienen derechos de autor; el autor aclaró que
+   la app es solo de uso académico y personal y no se publicará, y la nota del
+   .txt se ajustó a eso.
+
+============================================================================
+5. CONTACTO POR WHATSAPP / LLAMADA
+============================================================================
+ - util/Contacto.kt: si el teléfono es un celular boliviano (8 dígitos que
+   empiezan con 6 o 7) abre el chat de WhatsApp (https://wa.me/591XXXXXXXX),
+   probando WhatsApp y WhatsApp Business; si no está instalado o el número es
+   fijo, abre el marcador.
+ - En la ficha, el botón dice "WhatsApp · número" o "Llamar · número". Si el
+   negocio no tiene teléfono, el botón no aparece; sin dirección, esa fila
+   tampoco.
+ - Pruebas: ContactoTest (2 pruebas). Verificado en el teléfono: el botón abre
+   el chat de WhatsApp con el número correcto.
+
+============================================================================
+6. REGISTRO DE NEGOCIOS: TELÉFONO OPCIONAL Y CORRECCIÓN DE LA FOTO
+============================================================================
+ - El teléfono dejó de ser obligatorio al registrar o editar un negocio (basta
+   con dirección y ubicación GPS). Si se escribe, se valida el formato. La
+   etiqueta dice "Teléfono de contacto (opcional)".
+ - Error corregido: al elegir una foto de la galería siempre aparecía "No se
+   pudo cargar la foto". Causa: con inJustDecodeBounds, BitmapFactory.decodeStream
+   siempre devuelve null (solo llena las medidas) y el código usaba ese null
+   como señal de fallo. Se corrigió y se agregó un registro (log) con la causa
+   real de cualquier fallo futuro. Probado con una foto real de la galería.
+ - Comprobado un registro real: "tienda de abarrotes doña Bertha" (teléfono
+   vacío, con dirección, GPS y foto) quedó guardado en el teléfono y en
+   Firestore con estado PENDIENTE (hasta que un administrador lo publique).
+ - Limitación de diseño: una foto elegida de la galería es un archivo del
+   teléfono y no viaja a Firestore (otros teléfonos no la ven). Firebase
+   Storage requiere plan de pago con tarjeta, descartado por la restricción del
+   proyecto.
+
+============================================================================
+7. AUTENTICACIÓN: VER CONTRASEÑA, LOGO Y REDISEÑO DE CABECERAS
+============================================================================
+ - Componente CampoContrasena: ícono de ojo para mostrar/ocultar la contraseña
+   en los 5 campos (login 1, registro 2, recuperar 2). Cada campo guarda su
+   propio estado.
+ - Componente CabeceraAuth: el ícono real de la app (pin de mapa con cámara,
+   recortado con esquinas transparentes en res/drawable-nodpi/logo_lucidan.png),
+   centrado, con sombra suave, más título y lema. Se usa en login (logo de
+   112 dp), registro y recuperar contraseña (88 dp). Reemplazó al ícono
+   genérico de tienda.
+ - Observación: el ícono (con cámara) es el del lanzador previo y sugiere
+   turismo; se sugirió diseñar uno acorde a una guía de negocios (no se hizo).
+
+============================================================================
+8. REDISEÑO MATERIAL 3
+============================================================================
+Tema
+ - Color.kt y Theme.kt se reemplazaron por los generados con
+   material-color-utilities desde el color de marca #632423 (carpeta
+   design/theme/). Esquemas claro y oscuro completos, con los roles
+   surfaceContainer*. Color dinámico desactivado a propósito para mantener la
+   identidad de marca. Type.kt (escala 28/18/14/12 sp) se conservó. Se
+   conservaron las formas (esquinas) del proyecto.
+ - Colores por rubro armonizados con la marca (Blend.harmonize), fusionados en
+   RubroVisual.kt, usados en marcadores y placeholders.
+ - Todo color de las pantallas sale de MaterialTheme.colorScheme; tarjetas,
+   panel flotante, hoja inferior y botones flotantes usan los roles
+   surfaceContainer*. Única excepción intencional: colores de rubro (fijos).
+ - El tema de la ventana (res/values y values-night) sigue claro/oscuro desde
+   el primer cuadro.
+Auditoría con el skill material-3 (Home, Detalle, Mis negocios, Login)
+ - Contraste de texto medido en todos los pares usados: entre 6,3:1 y 16,7:1
+   (mínimo 4,5:1). Bordes e íconos: entre 4,4:1 y 9,6:1 (mínimo 3:1).
+ - Íconos de placeholder: los colores puros de 5 rubros (claro) y 4 (oscuro)
+   quedaban bajo 3:1; el ícono se mezcla 35% con onSurface y todos superan
+   3,9:1.
+ - Correcciones: la última fila de la hoja de resultados quedaba bajo la barra
+   de navegación (margen inferior agregado); el buscador partía su texto en dos
+   líneas (ahora "Buscar negocios"); las estrellas de reseña vacías y llenas se
+   veían igual (ahora contorno gris vs. relleno); acciones con etiqueta para
+   lectores de pantalla ("Ver ...", "Ampliar el mapa de la ruta"); fotos y
+   logos decorativos sin descripción repetida; "Mis negocios" oculta teléfono y
+   dirección vacíos.
+ - Verificado en el teléfono en modo claro y oscuro.
+
+============================================================================
+9. SELECTOR DE TEMA CLARO / OSCURO
+============================================================================
+ - Menú de Home -> "Tema": diálogo con "Del sistema", "Claro" y "Oscuro"
+   (filas de al menos 48 dp, seleccionables).
+ - ui/theme/ModoTema.kt guarda la preferencia en SharedPreferences ("ajustes");
+   se aplica al instante y persiste al reiniciar. Por defecto, "Del sistema".
+ - MainActivity aplica el tema elegido y el estilo de las barras del sistema.
+   Se detectó y corrigió que con el estilo "auto" la barra de navegación
+   ignoraba el tema de la app cuando difería del del sistema; ahora se usan
+   estilos explícitos. Verificado en las 4 combinaciones app/sistema.
+ - Limitaciones: la opción solo está en el menú de Home (no en el login); las
+   teselas del mapa (OpenStreetMap) siguen claras en modo oscuro.
+
+============================================================================
+10. PROBLEMAS ENCONTRADOS Y CÓMO SE RESOLVIERON
+============================================================================
+ a) Ids de semilla en conflicto: los primeros negocios de ejemplo usaban ids 1..N
+    y chocaban con ids antiguos del usuario (se descartaban 2 negocios). Se pasó
+    a un rango alto (ID_BASE + posición).
+ b) Semilla borrada por la sincronización: un indicador de "ya subida" se marcaba
+    aunque la escritura a Firestore fallara, y luego la sincronización borraba
+    los ejemplos locales. Se eliminó el indicador y se definió la política del
+    punto 2 (los ejemplos nunca se borran por sincronización).
+ c) PERMISSION_DENIED en Firestore: las reglas publicadas eran las antiguas y
+    rechazaban los rubros nuevos. Se actualizó firestore.rules y el autor las
+    publicó.
+ d) Marcadores del mapa de un solo color: osmdroid comparte un único ícono
+    por defecto, y el último tinte pisaba a los demás. Cada marcador usa ahora
+    su propia copia del ícono.
+ e) Fotos locales pisadas por la sincronización: la nube trae las fotos vacías
+    de los ejemplos. Se conservan las locales si la nube no trae ninguna.
+ f) "No se pudo cargar la foto": ver punto 6.
+ g) Barra de navegación con el tema equivocado: ver punto 9.
+ h) Al sacar un negocio de ejemplo de Firestore para reemplazarlo por el real, se
+    borraron 11 documentos de ejemplo que habían sido subidos durante las
+    pruebas (solo documentos con dueño "semilla").
+
+============================================================================
+11. ARCHIVOS
+============================================================================
+Eliminados
+ data/model/Lugar.kt, data/model/CategoriaLugar.kt, data/local/LugarDao.kt,
+ data/local/LugaresSemilla.kt, data/repository/LugarRepository.kt,
+ ui/detalle/DetalleNegocioScreen.kt, DetalleNegocioViewModel.kt,
+ DetalleNegocioUiState.kt
+Nuevos (código)
+ data/model/Rubro.kt, data/local/NegociosSemilla.kt, util/RubroVisual.kt,
+ util/Contacto.kt, ui/auth/CampoContrasena.kt, ui/auth/CabeceraAuth.kt,
+ ui/theme/ModoTema.kt
+Nuevos (pruebas)
+ data/local/NegociosSemillaTest.kt (6), util/ContactoTest.kt (2)
+ (BusquedaTest.kt, 4 pruebas, ya existía)
+Nuevos (recursos y datos)
+ res/drawable-nodpi: 12 fotos de negocios + logo_lucidan.png
+ res/values/colors.xml y themes.xml; res/values-night/colors.xml y themes.xml
+ docs/negocios_bermejo.txt (reemplaza a lugares_bermejo.txt, que puede
+ eliminarse), design/theme/ (paleta generada), imagenes_negocio/ (originales)
+Modificados (principales)
+ data/model: Negocio, Favorito, Resena, Usuario, RolUsuario
+ data/local: AppDatabase (v11), Converters, NegocioDao, FavoritoDao, ResenaDao
+ data/repository: NegocioRepository, FavoritoRepository, ResenaRepository
+ data/remote: NubeService
+ ui/home (HomeScreen, HomeViewModel, HomeUiState), ui/detalle (DetalleScreen,
+ DetalleViewModel, DetalleUiState), ui/favoritos, ui/negocio (formulario,
+ ViewModel, Mis negocios), ui/auth (Login, Registro, Recuperar, AuthViewModel),
+ ui/admin (AdminViewModel), ui/theme (Color, Theme), notificaciones/*,
+ navigation/LuciDanNavHost, MainActivity, util/FotoNegocio
+ Raíz: app/build.gradle.kts (tarea copiarSemilla, opciones de pruebas),
+ .gitignore, firestore.rules, CLAUDE.md (secciones 3 y 8)
+
+============================================================================
+12. PENDIENTES Y LIMITACIONES CONOCIDAS
+============================================================================
+ - No se ha hecho commit: todo lo de esta etapa (y de las anteriores) está sin
+   confirmar en git.
+ - "Mis negocios" no se vio con una tarjeta con datos reales en pantalla (la
+   cuenta de prueba no tenía negocios); es el mismo componente de foto que Home
+   y Detalle y compila.
+ - La notificación de cercanía (HU13) no se probó físicamente (requiere estar a
+   menos de 300 m de un negocio destacado con notificaciones activas).
+ - "Cómo llegar", el panel de administración y las pantallas de planes y
+   estadísticas no se re-probaron tras la migración.
+ - Falta publicar un negocio registrado desde la app (queda PENDIENTE hasta que
+   un administrador lo publique; la contraseña de admin@lucidan.bo no se
+   recuerda).
+ - La colección "lugares" de Firestore sigue existiendo (sin uso); puede
+   borrarse a mano desde la consola.
+ - Algunos negocios antiguos en Firestore conservan rubros ya inexistentes
+   (TURISMO, ACTIVIDADES); la app los muestra como "Otro".
+ - Las fotos elegidas desde la galería no se comparten entre teléfonos.
+ - El ícono de la app conserva la cámara de la versión de turismo.
+ - Quedó en el teléfono de pruebas una cuenta de prueba
+   (migracion.test@lucidan.test) creada solo para verificar.
+ - Los diagramas UML y los documentos RUP ya estaban actualizados al modelo de
+   negocios antes de esta etapa; no se modificaron aquí.
+============================================================================
+19/11/2026 - RESEÑAS EN LA NUBE, FOTOS EN LA NUBE E «INFO ÚTIL»
+============================================================================
+1) Reseñas sincronizadas (Firestore, colección "resenas"). Antes vivían solo en Room.
+   Room v12: la reseña pierde la FK a usuarios y guarda "autorId" (hash del correo).
+   El promedio de cada negocio se recalcula en el teléfono con las reseñas bajadas.
+2) Fotos de negocio en la nube sin Firebase Storage: la foto se reduce (800 px, JPEG)
+   y viaja como texto Base64 dentro del campo "fotos" del documento del negocio
+   (límite de 1 MiB por documento). Al sincronizar se guarda como archivo local.
+3) «Info útil» (EPIC07, HU16 tipo de cambio y HU17 paso fronterizo, más clima):
+   - Acceso: ícono de información en la barra de Home y ítem del menú.
+   - Cambio Bs<->ARS: documento Firestore info_util/cambio {compraArsPorBs,
+     ventaArsPorBs, actualizado, adminId}. Tasas en ARS por 1 Bs: Bs->ARS usa la
+     compra, ARS->Bs usa la venta; se exige compra <= venta. Calculadora con botón
+     para invertir y texto que dice qué tasa se aplicó. Referencia internacional
+     (open.er-api.com, ARS/USD dividido por BOB/USD) como dato secundario; si el
+     admin no cargó tasa, la calculadora usa esa referencia y lo indica.
+   - Clima: Open-Meteo (coordenadas de BermejoZona, verificadas contra la semilla):
+     actual, sensación, humedad, viento, mín/máx, lluvia, sol y 3 días. Se agregó
+     weather_code diario para el ícono de cada día.
+   - Paso fronterizo: info_util/frontera con textos libres; por defecto "Por confirmar".
+     NO se inventaron horarios, tarifas ni teléfonos (ni siquiera los de emergencia).
+   - Edición solo para ADMINISTRADOR (diálogo de tasa y EditarFronteraScreen).
+   - Offline: SharedPreferences "info_util_cache" (no se tocó Room) + caché de Firestore.
+   Archivos nuevos: ui/infoutil/{InfoUtilScreen,InfoUtilViewModel,EditarFronteraScreen,
+   EditarFronteraViewModel}.kt, data/remote/InfoUtilService.kt,
+   data/repository/InfoUtilRepository.kt, data/model/InfoUtil.kt, util/{Cambio,
+   ClimaCodigos,Tiempo}.kt y pruebas CambioTest, ClimaCodigosTest, TiempoTest.
+   Archivos modificados: navigation/LuciDanNavHost.kt, ui/home/HomeScreen.kt,
+   firestore.rules (info_util y resenas), CLAUDE.md.
+   Decisión: las reglas no pueden verificar el rol ADMINISTRADOR (el login es local,
+   sin Firebase Authentication); se exige en la app, igual que con "negocios".
+   Pruebas: 29 pruebas JUnit en verde.
+
+============================================================================
+FIN DEL DOCUMENTO
+============================================================================

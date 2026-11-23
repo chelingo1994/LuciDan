@@ -13,3 +13,13 @@
 .externalNativeBuild
 .cxx
 local.properties
+*.log
+hs_err_pid*.log
+replay_pid*.log
+
+# Configuración de Firebase del proyecto
+app/google-services.json
+
+
+# Copia generada por la tarea copiarSemilla (la fuente es docs/negocios_bermejo.txt)
+app/src/main/assets/negocios_bermejo.txt

@@ -1,0 +1,43 @@
+# NEGOCIOS DE LUCIDAN APP - archivo para editar
+# (reemplaza a lugares_bermejo.txt — la app ahora es una guía 100% de negocios)
+#
+# Una línea por negocio. Los campos van separados por | (barra vertical):
+#   nombre | rubro | latitud | longitud | descripcion (qué vende u ofrece) | telefono | direccion | horario | destacado | foto
+#
+# - rubro: GASTRONOMIA, FARMACIA_SALUD, MODA_ROPA, CAMBIO_MONEDA, TRANSPORTE,
+#          ALOJAMIENTO, ABARROTES, TECNOLOGIA, SERVICIOS u OTRO
+#          (si necesitas otro rubro, escríbelo y lo agrego a la app)
+# - latitud y longitud: decimales con PUNTO, negativos en Bermejo (ej: -22.7333 | -64.3417)
+# - descripcion: qué vende u ofrece el negocio, en una frase corta.
+# - telefono: número de contacto (celular/WhatsApp). Déjalo vacío si no hay.
+# - direccion: calle y referencia, texto libre. Déjalo vacío si no se conoce.
+# - horario: texto libre (ej: 08:00 - 20:00). "Consultar" si no se conoce.
+# - destacado: SI o NO (SI = dispara la notificación de cercanía).
+# - foto (OPCIONAL, décimo campo): nombre del archivo en app/src/main/res/drawable-nodpi/, en
+#   minúsculas, sin espacios, tildes ni símbolos (ej: aurora_2.jpg; la extensión es opcional).
+#   Si no hay foto, deja el campo vacío o borra el último |: la app muestra el ícono de su rubro.
+#   Para agregar una foto: copia el JPG a esa carpeta con un nombre seguro y escríbelo aquí.
+# - Las líneas que empiezan con # se ignoran.
+#
+# FUENTE: los negocios de abajo son datos factuales (nombre, rubro, teléfono,
+# coordenadas) referenciados del directorio público uruku.bo (nov. 2026),
+# solo para la carga inicial del proyecto académico. Antes de un lanzamiento
+# real: verificar cada dato con el negocio.
+# FOTOS: las de esta semilla las aportó el dueño del proyecto (carpeta imagenes_negocio/). La app es solo de
+# uso académico y personal (no se publica), así que se usan tal cual.
+#
+# ---- NEGOCIOS (referenciados de uruku.bo) ----
+AURORA 2 | GASTRONOMIA | -22.72883472435304 | -64.340209635274 | Churrasquería, venta al por mayor | 74535332 | | Consultar | SI | aurora_2.jpg
+Boutique Tatiana | MODA_ROPA | -22.7357309 | -64.3358777 | Ropa, venta mayorista y minorista | 78706401 | Mercado Bolívar, 2do piso | Consultar | NO | boutique_tatiana.jpg
+Casa de ropa cama | MODA_ROPA | -22.7338814 | -64.3460608 | Blanquería (sábanas, frazadas y ropa de cama), mayorista y minorista | 67996918 | | Consultar | NO | casa_de_ropa_cama.jpg
+Comercial Samuel importados | MODA_ROPA | -22.7323887 | -64.3486403 | Vestidos y prendas importadas, mayorista y minorista | 64583236 | | Consultar | NO | comercial_samuel_importados.jpg
+Farmacia Patogonia | FARMACIA_SALUD | -22.738908800284502 | -64.33810052883517 | Farmacia, medicamentos e insumos | 75682431 | A una cuadra de la terminal, sobre la calle Cochabamba | Consultar | SI | farmacia_patogonia.jpg
+Librería ISABELLA MAITE | OTRO | -22.733704949948237 | -64.33885993429274 | Librería y artículos escolares, venta al por mayor | 68823178 | | Consultar | NO | libreria_isabella_maite.jpg
+Pastelería Antójitos | GASTRONOMIA | -22.7369683 | -64.3358256 | Repostería y pastelería, mayorista y minorista | 71872540 | | Consultar | NO | pasteleria_antojitos.jpg
+Sumak Bazar | OTRO | -22.733404223776855 | -64.34621822083633 | Bazar, artículos variados, mayorista y minorista | 72903385 | Calle José Hache, entrada por el tránsito | Consultar | NO | sumak_bazar.jpg
+WILLY | OTRO | -22.73572216109639 | -64.33636391912285 | Muebles, venta al por mayor | | | Consultar | NO | willy.jpg
+A&M LENCERIA | MODA_ROPA | -22.733870653729785 | -64.34207379337971 | Lencería, venta al por mayor | 72976579 | | Consultar | NO | a_m_lenceria.jpg
+Casa de Cambio | CAMBIO_MONEDA | -22.7346991483411 | -64.34455344002238 | Cambio de bolivianos, pesos argentinos y dólares | | | Consultar | NO | casa_de_cambio.jpg
+Banco Fie | SERVICIOS | -22.73192269584472 | -64.34177624668068 | Agencia bancaria y cajero automático | | | Consultar | NO | banco_fie.jpg
+#
+# ---- NEGOCIOS NUEVOS (agrégalos debajo, una línea cada uno) ----

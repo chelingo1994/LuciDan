@@ -36,18 +36,18 @@ title DS08 — Notificación de cercanía (HU13)
 autonumber
 participant "LocationService" as GPS
 participant "GeofenceManager" as GEO
-participant "LugarRepository" as REPO
+participant "NegocioRepository" as REPO
 participant "NotificationService\n(notificación local)" as NOTIF
 actor "Usuario" as U
 
 GPS -> GEO : ubicación actualizada (periódica)
 GEO -> REPO : buscarDestacadosCercanos(ubicacion, radio)
-REPO --> GEO : lugar destacado / promoción activa
-alt hay lugar destacado cercano y notificaciones activas
-  GEO -> NOTIF : notificarLugarCercano(lugar)
-  NOTIF -> U : notificación local "Tienes un lugar destacado cerca"
+REPO --> GEO : negocio destacado / promoción activa
+alt hay negocio destacado cercano y notificaciones activas
+  GEO -> NOTIF : notificarNegocioCercano(negocio)
+  NOTIF -> U : notificación local "Tienes un negocio destacado cerca"
   U -> NOTIF : tocar la notificación
-  NOTIF --> U : abrir ficha de detalle del lugar
+  NOTIF --> U : abrir ficha del negocio
 else sin coincidencias o notificaciones desactivadas
   GEO -> GEO : descartar (sin acción)
 end

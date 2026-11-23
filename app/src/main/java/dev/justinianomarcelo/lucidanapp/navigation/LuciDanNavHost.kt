@@ -8,35 +8,48 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.justinianomarcelo.lucidanapp.auth.SessionManager
+import dev.justinianomarcelo.lucidanapp.ui.admin.AdminScreen
 import dev.justinianomarcelo.lucidanapp.ui.auth.LoginScreen
 import dev.justinianomarcelo.lucidanapp.ui.auth.RecuperarContrasenaScreen
 import dev.justinianomarcelo.lucidanapp.ui.auth.RegistroScreen
 import dev.justinianomarcelo.lucidanapp.ui.detalle.DetalleScreen
+import dev.justinianomarcelo.lucidanapp.ui.estadisticas.PanelEstadisticasScreen
 import dev.justinianomarcelo.lucidanapp.ui.favoritos.FavoritosScreen
 import dev.justinianomarcelo.lucidanapp.ui.home.HomeScreen
 import dev.justinianomarcelo.lucidanapp.ui.negocio.EditarNegocioScreen
+import dev.justinianomarcelo.lucidanapp.ui.negocio.NUEVO_NEGOCIO
 import dev.justinianomarcelo.lucidanapp.ui.negocio.PanelNegocioScreen
+import dev.justinianomarcelo.lucidanapp.ui.planes.PlanesScreen
 
 object LuciDanRutas {
+    const val ARG_NEGOCIO_ID = "negocioId"
     const val LOGIN = "login"
     const val REGISTRO = "registro"
     const val RECUPERAR = "recuperar"
     const val HOME = "home"
     const val FAVORITOS = "favoritos"
     const val PANEL_NEGOCIO = "panel_negocio"
-    const val EDITAR_NEGOCIO = "editar_negocio"
-    const val ARG_LUGAR_ID = "lugarId"
-    const val DETALLE = "detalle/{$ARG_LUGAR_ID}"
+    const val EDITAR_NEGOCIO = "editar_negocio/{$ARG_NEGOCIO_ID}"
+    const val PLANES = "planes/{$ARG_NEGOCIO_ID}"
+    const val ESTADISTICAS = "estadisticas/{$ARG_NEGOCIO_ID}"
+    const val ADMIN = "admin"
+    const val INFO_UTIL = "info_util"
+    const val EDITAR_FRONTERA = "info_util_editar_frontera"
+    const val DETALLE = "detalle/{$ARG_NEGOCIO_ID}"
 
-    fun detalle(lugarId: Long) = "detalle/$lugarId"
+    fun detalle(negocioId: Long) = "detalle/$negocioId"
+    fun editarNegocio(negocioId: Long) = "editar_negocio/$negocioId"
+    fun planes(negocioId: Long) = "planes/$negocioId"
+    fun estadisticas(negocioId: Long) = "estadisticas/$negocioId"
 }
 
 @Composable
 fun LuciDanNavHost(
     navController: NavHostController = rememberNavController(),
-    lugarIdInicial: Long? = null
+    negocioIdInicial: Long? = null
 ) {
-    val destinoInicial = if (lugarIdInicial != null) LuciDanRutas.detalle(lugarIdInicial) else LuciDanRutas.LOGIN
+    val argumentoNegocio = listOf(navArgument(LuciDanRutas.ARG_NEGOCIO_ID) { type = NavType.LongType })
+    val destinoInicial = if (negocioIdInicial != null) LuciDanRutas.detalle(negocioIdInicial) else LuciDanRutas.LOGIN
 
     NavHost(navController = navController, startDestination = destinoInicial) {
         composable(LuciDanRutas.LOGIN) {
@@ -68,9 +81,10 @@ fun LuciDanNavHost(
         }
         composable(LuciDanRutas.HOME) {
             HomeScreen(
-                onLugarClick = { lugarId -> navController.navigate(LuciDanRutas.detalle(lugarId)) },
+                onNegocioClick = { negocioId -> navController.navigate(LuciDanRutas.detalle(negocioId)) },
                 onIrAFavoritos = { navController.navigate(LuciDanRutas.FAVORITOS) },
                 onIrAMiNegocio = { navController.navigate(LuciDanRutas.PANEL_NEGOCIO) },
+                onIrAAdmin = { navController.navigate(LuciDanRutas.ADMIN) },
                 onCerrarSesion = {
                     SessionManager.cerrarSesion()
                     navController.navigate(LuciDanRutas.LOGIN) {
@@ -81,11 +95,10 @@ fun LuciDanNavHost(
         }
         composable(
             route = LuciDanRutas.DETALLE,
-            arguments = listOf(navArgument(LuciDanRutas.ARG_LUGAR_ID) { type = NavType.LongType })
+            arguments = argumentoNegocio
         ) { entrada ->
-            val lugarId = entrada.arguments?.getLong(LuciDanRutas.ARG_LUGAR_ID) ?: 0L
             DetalleScreen(
-                lugarId = lugarId,
+                negocioId = entrada.arguments?.getLong(LuciDanRutas.ARG_NEGOCIO_ID) ?: 0L,
                 onVolver = {
                     if (!navController.popBackStack()) {
                         navController.navigate(LuciDanRutas.HOME)
@@ -101,17 +114,40 @@ fun LuciDanNavHost(
         composable(LuciDanRutas.FAVORITOS) {
             FavoritosScreen(
                 onVolver = { navController.popBackStack() },
-                onLugarClick = { lugarId -> navController.navigate(LuciDanRutas.detalle(lugarId)) }
+                onNegocioClick = { negocioId -> navController.navigate(LuciDanRutas.detalle(negocioId)) }
             )
         }
         composable(LuciDanRutas.PANEL_NEGOCIO) {
             PanelNegocioScreen(
                 onVolver = { navController.popBackStack() },
-                onEditarPerfil = { navController.navigate(LuciDanRutas.EDITAR_NEGOCIO) }
+                onAgregarNegocio = { navController.navigate(LuciDanRutas.editarNegocio(NUEVO_NEGOCIO)) },
+                onEditarNegocio = { negocioId -> navController.navigate(LuciDanRutas.editarNegocio(negocioId)) },
+                onVerPlanes = { negocioId -> navController.navigate(LuciDanRutas.planes(negocioId)) },
+                onVerEstadisticas = { negocioId -> navController.navigate(LuciDanRutas.estadisticas(negocioId)) }
             )
         }
-        composable(LuciDanRutas.EDITAR_NEGOCIO) {
-            EditarNegocioScreen(onVolver = { navController.popBackStack() })
+        composable(LuciDanRutas.EDITAR_NEGOCIO, arguments = argumentoNegocio) { entrada ->
+            EditarNegocioScreen(
+                negocioId = entrada.arguments?.getLong(LuciDanRutas.ARG_NEGOCIO_ID) ?: NUEVO_NEGOCIO,
+                onVolver = { navController.popBackStack() }
+            )
         }
+        composable(LuciDanRutas.PLANES, arguments = argumentoNegocio) { entrada ->
+            PlanesScreen(
+                negocioId = entrada.arguments?.getLong(LuciDanRutas.ARG_NEGOCIO_ID) ?: 0L,
+                onVolver = { navController.popBackStack() }
+            )
+        }
+        composable(LuciDanRutas.ESTADISTICAS, arguments = argumentoNegocio) { entrada ->
+            PanelEstadisticasScreen(
+                negocioId = entrada.arguments?.getLong(LuciDanRutas.ARG_NEGOCIO_ID) ?: 0L,
+                onVolver = { navController.popBackStack() }
+            )
+        }
+        composable(LuciDanRutas.ADMIN) {
+            AdminScreen(onVolver = { navController.popBackStack() })
+        }
+        // «Info útil» (cambio, clima, frontera) queda para una fase posterior: el código sigue en ui/infoutil,
+        // pero sin ruta ni acceso desde Home. Para reactivarla, volver a registrar INFO_UTIL y EDITAR_FRONTERA aquí.
     }
 }

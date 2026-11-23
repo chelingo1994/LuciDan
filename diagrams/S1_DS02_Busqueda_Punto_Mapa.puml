@@ -34,22 +34,22 @@ skinparam noteBorderColor #8A7A6C
 
 title DS02 — Búsqueda desde un punto del mapa (HU03)
 autonumber
-actor "Turista / Residente" as U
+actor "Visitante / Residente" as U
 participant "HomeScreen" as UI
 participant "HomeViewModel" as VM
-participant "LugarRepository" as REPO
+participant "NegocioRepository" as REPO
 database "Base de Datos\n(Room)" as DB
 
 U -> UI : mantener presionado un punto del mapa
 UI -> UI : capturar coordenadas del punto
-UI -> VM : recalcularLugares(puntoLat, puntoLng, radio)
+UI -> VM : recalcularNegocios(puntoLat, puntoLng, radio)
 VM -> VM : validar punto dentro de la\nzona de cobertura (Bermejo)
 alt punto válido
-  VM -> REPO : obtenerLugaresCercanos(puntoLat, puntoLng, radio)
-  REPO -> DB : SELECT lugares WHERE distancia <= radio
-  DB --> REPO : lista de lugares
-  REPO --> VM : lista de lugares
-  VM --> UI : actualizar estado (lugares)
+  VM -> REPO : obtenerNegociosCercanos(puntoLat, puntoLng, radio)
+  REPO -> DB : SELECT negocios WHERE estado = "PUBLICADO"\nAND distancia <= radio
+  DB --> REPO : lista de negocios
+  REPO --> VM : lista de negocios
+  VM --> UI : actualizar estado (negocios)
   UI --> U : mostrar marcadores recalculados
 else punto fuera de cobertura
   VM --> UI : mensaje "fuera de zona de cobertura"

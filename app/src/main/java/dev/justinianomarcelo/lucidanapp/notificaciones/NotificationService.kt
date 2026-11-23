@@ -14,7 +14,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import dev.justinianomarcelo.lucidanapp.MainActivity
 import dev.justinianomarcelo.lucidanapp.R
-import dev.justinianomarcelo.lucidanapp.data.model.Lugar
+import dev.justinianomarcelo.lucidanapp.data.model.Negocio
 
 /**
  * Publica la notificación local de cercanía (DS08).
@@ -23,13 +23,13 @@ import dev.justinianomarcelo.lucidanapp.data.model.Lugar
  * propio de Marcelo (google-services.json), aún no configurado — ver
  * CLAUDE.md sección 8. Esta clase implementa el tramo on-device: cuando
  * [dev.justinianomarcelo.lucidanapp.notificaciones.GeofenceManager] detecta
- * que el usuario entró al radio de un lugar destacado, aquí se construye y
+ * que el usuario entró al radio de un negocio destacado, aquí se construye y
  * muestra la notificación local que cumple el mismo rol descrito en el DS08.
  */
 class NotificationService(private val context: Context) {
 
     @SuppressLint("MissingPermission")
-    fun notificarLugarCercano(lugar: Lugar) {
+    fun notificarNegocioCercano(negocio: Negocio) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
@@ -39,35 +39,35 @@ class NotificationService(private val context: Context) {
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra(MainActivity.EXTRA_LUGAR_ID, lugar.id)
+            putExtra(MainActivity.EXTRA_NEGOCIO_ID, negocio.id)
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            lugar.id.toInt(),
+            negocio.id.toInt(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notificacion = NotificationCompat.Builder(context, CANAL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Tienes un lugar destacado cerca")
-            .setContentText(lugar.nombre)
+            .setSmallIcon(R.drawable.ic_notificacion)
+            .setContentTitle("Tienes un negocio destacado cerca")
+            .setContentText(negocio.nombre)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(context).notify(lugar.id.toInt(), notificacion)
+        NotificationManagerCompat.from(context).notify(negocio.id.toInt(), notificacion)
     }
 
     private fun crearCanalSiNecesario() {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         val canal = NotificationChannel(
             CANAL_ID,
-            "Lugares cercanos",
+            "Negocios cercanos",
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "Avisos de lugares destacados cerca de tu ubicación"
+            description = "Avisos de negocios destacados cerca de tu ubicación"
         }
         manager.createNotificationChannel(canal)
     }

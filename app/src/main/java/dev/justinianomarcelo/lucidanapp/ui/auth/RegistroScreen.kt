@@ -87,17 +87,12 @@ private fun RegistroContenido(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Top
     ) {
-        Text(
-            text = "Regístrate para descubrir Bermejo",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 16.dp)
-        )
-        Text(
-            text = "Guarda tus favoritos y deja reseñas de comercios y lugares.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
+        CabeceraAuth(
+            titulo = "Regístrate para descubrir Bermejo",
+            subtitulo = "Guarda tus favoritos y deja reseñas de los negocios de Bermejo.",
+            anchoLogo = 200.dp,
+            estiloTitulo = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(top = 8.dp, bottom = 28.dp)
         )
 
         OutlinedTextField(
@@ -110,29 +105,19 @@ private fun RegistroContenido(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth()
         )
-        OutlinedTextField(
+        CampoContrasena(
             value = estado.contrasena,
             onValueChange = onContrasenaChange,
-            label = { Text("Contraseña") },
-            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            supportingText = { Text("Mínimo 8 caracteres, con mayúscula, minúscula y número.") },
+            label = "Contraseña",
+            supportingText = "Mínimo 8 caracteres, con mayúscula, minúscula y número.",
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp)
         )
-        OutlinedTextField(
+        CampoContrasena(
             value = estado.confirmarContrasena,
             onValueChange = onConfirmarContrasenaChange,
-            label = { Text("Confirmar contraseña") },
-            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            label = "Confirmar contraseña",
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)

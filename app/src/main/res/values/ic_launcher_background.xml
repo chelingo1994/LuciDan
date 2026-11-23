@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Granate de marca (#632423): fondo de la capa adaptativa del ícono de lanzador. -->
+    <color name="ic_launcher_background">#632423</color>
+</resources>
