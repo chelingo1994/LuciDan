@@ -392,7 +392,8 @@ fun DetalleScreen(
 internal fun MapaRuta(modifier: Modifier = Modifier, destino: GeoPoint, nombreDestino: String, ruta: ResultadoRuta) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val colorRuta = MaterialTheme.colorScheme.primary.toArgb()
+    val colorRuta = android.graphics.Color.parseColor("#69F0AE") // verde claro
+    val colorRutaBorde = android.graphics.Color.parseColor("#1B5E20") // verde oscuro
 
     val mapView = remember {
         MapView(context).apply {
@@ -423,6 +424,16 @@ internal fun MapaRuta(modifier: Modifier = Modifier, destino: GeoPoint, nombreDe
             vista.overlays.clear()
 
             if (ruta.puntos.isNotEmpty()) {
+                // Borde verde oscuro debajo para que el trazo claro resalte sobre el mapa
+                vista.overlays.add(
+                    Polyline(vista).apply {
+                        setPoints(ruta.puntos)
+                        outlinePaint.color = colorRutaBorde
+                        outlinePaint.strokeWidth = 20f
+                        outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+                        outlinePaint.strokeJoin = android.graphics.Paint.Join.ROUND
+                    }
+                )
                 vista.overlays.add(
                     Polyline(vista).apply {
                         setPoints(ruta.puntos)
