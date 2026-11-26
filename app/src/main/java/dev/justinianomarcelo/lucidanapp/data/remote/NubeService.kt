@@ -5,10 +5,12 @@ import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import dev.justinianomarcelo.lucidanapp.data.model.Rubro
 import dev.justinianomarcelo.lucidanapp.data.model.EstadoNegocio
 import dev.justinianomarcelo.lucidanapp.data.model.Negocio
 import dev.justinianomarcelo.lucidanapp.data.model.Resena
+import dev.justinianomarcelo.lucidanapp.util.BeneficiosPlan
 import dev.justinianomarcelo.lucidanapp.util.FotoNegocio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,12 +36,27 @@ class NubeService(private val firestore: FirebaseFirestore = FirebaseFirestore.g
     suspend fun obtenerNegocios(): InstantaneaNube<Negocio>? =
         leer(COLECCION_NEGOCIOS) { it.aNegocio() }
 
-    /** Suspende porque convertir la foto a texto es trabajo pesado: se hace fuera del hilo principal. */
+    /**
+     * Documento completo (alta o re-subida). Suspende porque convertir las fotos a texto es trabajo pesado:
+     * se hace fuera del hilo principal.
+     */
     suspend fun guardarNegocio(negocio: Negocio) {
         val mapa = withContext(Dispatchers.Default) { negocio.aMapa() }
         negocios.document(negocio.id.toString()).set(mapa)
             .addOnFailureListener { Log.w(TAG, "No se pudo guardar el negocio ${negocio.id}", it) }
     }
+
+    /**
+     * Edición del perfil: escribe con merge y SIN los campos del plan ni el sello, para que un teléfono con
+     * datos viejos no pise lo contratado o verificado en otro.
+     */
+    suspend fun actualizarPerfilNegocio(negocio: Negocio) {
+        val mapa = withContext(Dispatchers.Default) { negocio.aMapa() } - CAMPOS_AJENOS_AL_PERFIL
+        negocios.document(negocio.id.toString()).set(mapa, SetOptions.merge())
+            .addOnFailureListener { Log.w(TAG, "No se pudo actualizar el negocio ${negocio.id}", it) }
+    }
+
+    fun actualizarVerificado(negocioId: Long, verificado: Boolean) = actualizarCampo(negocioId, "verificado", verificado)
 
     /** Sube solo las fotos de un negocio ya existente (sin pisar el resto de sus campos). */
     suspend fun actualizarFotosNegocio(negocioId: Long, fotos: List<String>) {
@@ -49,7 +66,11 @@ class NubeService(private val firestore: FirebaseFirestore = FirebaseFirestore.g
 
     fun actualizarEstadoNegocio(negocioId: Long, estado: EstadoNegocio) = actualizarCampo(negocioId, "estado", estado.name)
 
-    fun actualizarDestacadoNegocio(negocioId: Long, destacado: Boolean) = actualizarCampo(negocioId, "destacado", destacado)
+    fun actualizarPlanNegocio(negocioId: Long, destacado: Boolean, nivel: Int, hasta: Long) {
+        negocios.document(negocioId.toString())
+            .update(mapOf("destacado" to destacado, "planNivel" to nivel, "destacadoHasta" to hasta))
+            .addOnFailureListener { Log.w(TAG, "No se pudo actualizar el plan del negocio $negocioId", it) }
+    }
 
     fun eliminarNegocio(negocioId: Long) {
         negocios.document(negocioId.toString()).delete()
@@ -95,6 +116,7 @@ class NubeService(private val firestore: FirebaseFirestore = FirebaseFirestore.g
         const val COLECCION_RESENAS = "resenas"
         private const val TAG = "NubeService"
         private const val TIEMPO_MAXIMO_MS = 10_000L
+        private val CAMPOS_AJENOS_AL_PERFIL = setOf("planNivel", "destacadoHasta", "verificado", "estado")
     }
 }
 
@@ -102,7 +124,11 @@ class NubeService(private val firestore: FirebaseFirestore = FirebaseFirestore.g
  * Las fotos con ruta de archivo son copias locales del teléfono y no sirven en otros dispositivos: se
  * convierten a texto Base64 para que viajen dentro del documento (sin Firebase Storage, que es de pago).
  */
-private fun List<String>.paraNube() = mapNotNull { if (it.startsWith("/")) FotoNegocio.aTextoParaNube(it) else it }
+private fun List<String>.paraNube(): List<String> {
+    // Todas las fotos comparten el documento (máximo 1 MiB): cada una recibe una parte del espacio.
+    val maximo = FotoNegocio.maximoTextoPorFoto(count { it.startsWith("/") })
+    return mapNotNull { if (it.startsWith("/")) FotoNegocio.aTextoParaNube(it, maximo) else it }
+}
 
 private fun Negocio.aMapa() = mapOf(
     "nombre" to nombre,
@@ -116,6 +142,14 @@ private fun Negocio.aMapa() = mapOf(
     "fotos" to fotos.paraNube(),
     "estado" to estado.name,
     "destacado" to destacado,
+    "planNivel" to planNivel,
+    "destacadoHasta" to destacadoHasta,
+    "facebook" to facebook,
+    "instagram" to instagram,
+    "tiktok" to tiktok,
+    "ofertaTexto" to ofertaTexto,
+    "ofertaHasta" to ofertaHasta,
+    "verificado" to verificado,
     "duenoId" to duenoId
 )
 
@@ -161,6 +195,14 @@ private fun DocumentSnapshot.aNegocio(): Negocio? {
         fotos = fotos(),
         estado = getString("estado").aEnum<EstadoNegocio>() ?: return null,
         destacado = getBoolean("destacado") ?: false,
+        planNivel = getLong("planNivel")?.toInt() ?: 0,
+        destacadoHasta = getLong("destacadoHasta") ?: 0L,
+        facebook = getString("facebook").orEmpty(),
+        instagram = getString("instagram").orEmpty(),
+        tiktok = getString("tiktok").orEmpty(),
+        ofertaTexto = getString("ofertaTexto").orEmpty().take(BeneficiosPlan.MAX_CARACTERES_OFERTA),
+        ofertaHasta = getLong("ofertaHasta") ?: 0L,
+        verificado = getBoolean("verificado") ?: false,
         duenoId = getString("duenoId")?.takeIf { it.isNotBlank() } ?: return null
     )
 }

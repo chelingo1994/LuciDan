@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +49,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.justinianomarcelo.lucidanapp.data.model.EstadoNegocio
 import dev.justinianomarcelo.lucidanapp.data.model.Negocio
 import dev.justinianomarcelo.lucidanapp.data.model.Usuario
+import dev.justinianomarcelo.lucidanapp.util.Sello
 
 private sealed interface ElementoLista {
     data class Encabezado(val titulo: String) : ElementoLista
@@ -134,7 +136,8 @@ fun AdminScreen(
                     is ElementoLista.FilaNegocio -> FilaNegocioAdmin(
                         negocio = elemento.negocio,
                         onCambiarEstado = { estadoNuevo -> viewModel.cambiarEstadoNegocio(elemento.negocio.id, estadoNuevo) },
-                        onEliminar = { confirmarEliminarNegocio = elemento.negocio }
+                        onEliminar = { confirmarEliminarNegocio = elemento.negocio },
+                        onCambiarVerificado = { viewModel.cambiarVerificado(elemento.negocio.id, it) }
                     )
                 }
             }
@@ -209,7 +212,12 @@ private fun FilaUsuarioAdmin(usuario: Usuario, onCambiarEstado: (Boolean) -> Uni
 }
 
 @Composable
-private fun FilaNegocioAdmin(negocio: Negocio, onCambiarEstado: (EstadoNegocio) -> Unit, onEliminar: () -> Unit) {
+private fun FilaNegocioAdmin(
+    negocio: Negocio,
+    onCambiarEstado: (EstadoNegocio) -> Unit,
+    onEliminar: () -> Unit,
+    onCambiarVerificado: (Boolean) -> Unit
+) {
     val publicado = negocio.estado == EstadoNegocio.PUBLICADO
     Card(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -236,6 +244,18 @@ private fun FilaNegocioAdmin(negocio: Negocio, onCambiarEstado: (EstadoNegocio) 
                 IconButton(onClick = onEliminar) {
                     Icon(Icons.Filled.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
                 }
+            }
+            TextButton(onClick = { onCambiarVerificado(!negocio.verificado) }) {
+                Icon(Icons.Filled.Verified, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Text(if (negocio.verificado) "Quitar verificación" else "Marcar como verificado")
+            }
+            if (negocio.verificado) {
+                Text(
+                    if (Sello.visible(negocio)) "Sello visible en la ficha."
+                    else "Verificado, pero el sello solo se ve con un plan Trimestral vigente.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

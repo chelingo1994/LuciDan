@@ -35,7 +35,7 @@ para el desglose completo). Duración estimada: 9 meses, 3 sprints.
 | App móvil | Kotlin, arquitectura por capas (Screen → ViewModel → Repository → DAO) |
 | Interfaz | Jetpack Compose + Material 3 (tema claro/oscuro, ver sección 3) |
 | Imágenes | Coil 3 (fotos de negocios desde recursos, archivos o URL) |
-| Persistencia local | Room (SQLite), versión 12 |
+| Persistencia local | Room (SQLite), versión 14 |
 | Backend / Panel web | Node.js + React |
 | Base de datos central | PostgreSQL + extensión PostGIS |
 | Mapas y geolocalización | **osmdroid** (tiles de OpenStreetMap) para el mapa + **OSRM** (servidor demo público `router.project-osrm.org`) para calcular rutas — sin API key, sin facturación, sin tarjeta |
@@ -43,7 +43,7 @@ para el desglose completo). Duración estimada: 9 meses, 3 sprints.
 | Autenticación | PBKDF2 + Room local (`AuthService`) — sin servidor externo |
 | Diseño UX/UI | Figma |
 | Gestión de tareas | Trello |
-| Pruebas | JUnit (29 pruebas) + pruebas manuales en teléfono físico (Infinix HOT 11S NFC, ADB inalámbrico) |
+| Pruebas | JUnit (51 pruebas) + pruebas manuales en teléfono físico (Infinix HOT 11S NFC, ADB inalámbrico) |
 
 **Nota (actualizada 2026-10-02):** se usa **Cloud Firestore** (plan Spark,
 sin tarjeta) como base compartida de `Negocio`, con Room como caché local
@@ -68,6 +68,29 @@ sabe quién escribe). `app/google-services.json` no se commitea.
   `data/model/InfoUtil.kt`, `util/Cambio.kt`, `util/ClimaCodigos.kt`, `util/Tiempo.kt`.
 - `firestore.rules`: `info_util/{doc}` lectura pública; create/update solo con forma válida (`cambioValido`, `fronteraValida`);
   delete prohibido. También cubre `resenas` (solo create).
+
+### Planes de publicidad con beneficios (HU10 ampliada, 2026-11-25)
+
+- Niveles definidos SOLO en `util/BeneficiosPlan.kt`: 1 Semanal (insignia «Destacado», pin con estrella, primero en la
+  lista, visible fuera del radio), 2 Mensual (+ aviso de cercanía y estadísticas por período), 3 Trimestral (+ carrusel
+  «Destacados» y etiqueta «Más conveniente»). `VISIBLE_SIN_FILTRO_RUBRO_NIVEL3 = false`.
+- Reglas puras en `util/Destacados.kt`. La vigencia se calcula al leer (`planNivel` y `destacadoHasta`); el booleano
+  `destacado` solo no basta (los «SI» de la semilla ya no destacan sin plan).
+- `negocios` suma `planNivel` y `destacadoHasta` (ms), y `planes_publicidad` suma `nivel` (Room 13). Los tres campos del
+  negocio viajan a Firestore; `firestore.rules` no cambió.
+- Las contrataciones siguen locales: `ContratacionRepository.aplicarPlanes()` pone en cada negocio el mejor plan vigente
+  de este teléfono y nunca baja uno vigente que venga de la nube. Sin pagos reales.
+- Sin plan o con nivel 1, las estadísticas muestran solo totales.
+- Fotos por nivel 0/1/2/3: 2/3/5/6. El límite solo impide agregar; al vencer no se borra nada, se muestran las
+  primeras N (`LimiteFotos`) y «Mis negocios» avisa. En Firestore las fotos comparten el documento (900 000
+  caracteres repartidos).
+- Nivel 2+: redes sociales (`util/RedesSociales.kt`) y «Comparación con tu rubro» (referencial, datos del teléfono).
+- Nivel 3: oferta del día (60 caracteres), sello «Negocio verificado» (lo marca el administrador;
+  `SELLO_SOLO_NIVEL3`) y aviso 2 días antes de vencer (`AvisadorVencimiento`, sin WorkManager: se revisa al abrir
+  Home y «Mis negocios»). Reglas puras en `util/ReglasPlan.kt`.
+- El WhatsApp de todos los negocios abre con «Hola, vi su negocio en LuciDan».
+- Room 14 (`data/local/Migraciones.kt`): `facebook`, `instagram`, `tiktok`, `ofertaTexto`, `ofertaHasta`,
+  `verificado`. Todos viajan a Firestore. Editar el perfil escribe con *merge* sin plan, estado ni `verificado`.
 
 ### 2.1 Decisión de arquitectura: osmdroid en vez de Google Maps Platform
 

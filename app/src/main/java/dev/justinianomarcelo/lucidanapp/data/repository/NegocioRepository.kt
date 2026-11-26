@@ -6,6 +6,7 @@ import dev.justinianomarcelo.lucidanapp.data.model.EstadoNegocio
 import dev.justinianomarcelo.lucidanapp.data.model.Negocio
 import dev.justinianomarcelo.lucidanapp.data.remote.NubeService
 import dev.justinianomarcelo.lucidanapp.util.Busqueda
+import dev.justinianomarcelo.lucidanapp.util.Destacados
 import dev.justinianomarcelo.lucidanapp.util.FotoNegocio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -41,15 +42,33 @@ class NegocioRepository(
         return nuevo.id
     }
 
-    /** HU09: guarda cambios del perfil y los refleja de inmediato. */
+    /**
+     * HU09: guarda cambios del perfil y los refleja de inmediato. El plan y el sello no se tocan: los cambian
+     * la contratación y el administrador, quizá desde otro teléfono mientras el formulario estaba abierto.
+     */
     suspend fun actualizarNegocio(negocio: Negocio) {
-        negocioDao.actualizar(negocio)
-        nube.guardarNegocio(negocio)
+        val actual = negocioDao.obtenerPorId(negocio.id)
+        val nuevo = if (actual == null) negocio else negocio.copy(
+            destacado = actual.destacado,
+            planNivel = actual.planNivel,
+            destacadoHasta = actual.destacadoHasta,
+            verificado = actual.verificado,
+            estado = actual.estado,
+            promedioCalificacion = actual.promedioCalificacion
+        )
+        negocioDao.actualizar(nuevo)
+        nube.actualizarPerfilNegocio(nuevo)
+    }
+
+    /** HU14: sello «Negocio verificado», solo desde el panel de administración. */
+    suspend fun actualizarVerificado(negocioId: Long, verificado: Boolean) {
+        negocioDao.actualizarVerificado(negocioId, verificado)
+        nube.actualizarVerificado(negocioId, verificado)
     }
 
     /**
-     * HU01/HU02: negocios publicados dentro de [radioMetros] desde el punto dado (sección 2.2
-     * de CLAUDE.md). TA-10-05: los destacados (plan de publicidad activo) van primero.
+     * HU01/HU02: negocios publicados dentro de [radioMetros] desde el punto dado (sección 2.2 de CLAUDE.md).
+     * TA-10-05: los destacados vigentes se ven aunque estén fuera del radio y van primero ([Destacados]).
      */
     suspend fun obtenerNegociosCercanos(
         lat: Double,
@@ -58,28 +77,35 @@ class NegocioRepository(
         categoria: Rubro? = null,
         consulta: String = ""
     ): List<Negocio> {
-        return negocioDao.obtenerPorEstado(EstadoNegocio.PUBLICADO)
-            .filter { it.calcularDistancia(lat, lng) <= radioMetros }
-            .filter { categoria == null || it.categoria == categoria }
+        val ahora = System.currentTimeMillis()
+        val visibles = negocioDao.obtenerPorEstado(EstadoNegocio.PUBLICADO)
+            .filter { Destacados.esVisibleEnMapa(it, it.calcularDistancia(lat, lng), radioMetros, categoria, ahora) }
             // La descripción dice qué vende el negocio: buscar "pan" encuentra una panadería de otro nombre.
             .filter { Busqueda.coincide(consulta, it.nombre, it.categoria.etiqueta, it.descripcion) }
-            .sortedWith(compareByDescending<Negocio> { it.destacado }.thenBy { it.calcularDistancia(lat, lng) })
+        return Destacados.ordenar(visibles, ahora) { it.calcularDistancia(lat, lng) }
     }
 
-    /** DS08: negocios destacados y publicados dentro del radio, para las notificaciones de cercanía. */
+    /** DS08: negocios publicados cuyo plan vigente incluye aviso de cercanía, dentro del radio. */
     suspend fun buscarDestacadosCercanos(lat: Double, lng: Double, radioMetros: Double): List<Negocio> =
         negocioDao.obtenerPorEstado(EstadoNegocio.PUBLICADO)
-            .filter { it.destacado && it.calcularDistancia(lat, lng) <= radioMetros }
+            .filter { Destacados.beneficios(it).notificacionCercania && it.calcularDistancia(lat, lng) <= radioMetros }
+
+    /** Negocios publicados cuyo plan vigente incluye el carrusel de inicio. */
+    suspend fun obtenerParaCarrusel(): List<Negocio> =
+        negocioDao.obtenerPorEstado(EstadoNegocio.PUBLICADO)
+            .filter { Destacados.beneficios(it).carruselInicio }
+            .sortedBy { it.nombre }
 
     /** DS05: guarda el promedio de reseñas (se calcula en el teléfono con las reseñas sincronizadas). */
     suspend fun recalcularPromedio(negocioId: Long, promedio: Double) {
         negocioDao.actualizarPromedio(negocioId, promedio)
     }
 
-    /** DS09: activa o quita el destacado mientras el plan de publicidad esté vigente (HU10). */
-    suspend fun actualizarEstadoDestacado(negocioId: Long, destacado: Boolean) {
-        negocioDao.actualizarEstadoDestacado(negocioId, destacado)
-        nube.actualizarDestacadoNegocio(negocioId, destacado)
+    /** DS09: guarda nivel y vencimiento del plan (nivel 0 lo quita) en Room y en la nube (HU10). */
+    suspend fun actualizarPlan(negocioId: Long, nivel: Int, hasta: Long) {
+        val destacado = nivel > 0
+        negocioDao.actualizarPlan(negocioId, destacado, nivel, hasta)
+        nube.actualizarPlanNegocio(negocioId, destacado, nivel, hasta)
     }
 
     /** DS11 (HU14): panel de administración. */

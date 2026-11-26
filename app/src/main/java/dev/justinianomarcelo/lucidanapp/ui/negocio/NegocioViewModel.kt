@@ -17,6 +17,13 @@ import dev.justinianomarcelo.lucidanapp.data.model.RolUsuario
 import dev.justinianomarcelo.lucidanapp.data.repository.NegocioRepository
 import dev.justinianomarcelo.lucidanapp.data.repository.UsuarioRepository
 import dev.justinianomarcelo.lucidanapp.location.LocationService
+import dev.justinianomarcelo.lucidanapp.notificaciones.AvisadorVencimiento
+import dev.justinianomarcelo.lucidanapp.util.Beneficios
+import dev.justinianomarcelo.lucidanapp.util.BeneficiosPlan
+import dev.justinianomarcelo.lucidanapp.util.Destacados
+import dev.justinianomarcelo.lucidanapp.util.LimiteFotos
+import dev.justinianomarcelo.lucidanapp.util.RedSocial
+import dev.justinianomarcelo.lucidanapp.util.VigenciaOferta
 import dev.justinianomarcelo.lucidanapp.util.FotoNegocio
 import dev.justinianomarcelo.lucidanapp.util.IdDueno
 import kotlinx.coroutines.Dispatchers
@@ -38,12 +45,28 @@ data class NegocioUiState(
     val longitud: Double? = null,
     val obteniendoUbicacion: Boolean = false,
     val horario: String = "",
-    val foto: String = "",
+    /** La primera es la portada. */
+    val fotos: List<String> = emptyList(),
+    val facebook: String = "",
+    val instagram: String = "",
+    val tiktok: String = "",
+    val ofertaTexto: String = "",
+    /** null: conservar la vigencia de la oferta actual (o «hasta hoy» si es nueva). */
+    val ofertaVigencia: VigenciaOferta? = null,
     val cargando: Boolean = true,
     val guardando: Boolean = false,
     val mensaje: String? = null,
     val errores: Map<String, String> = emptyMap()
-)
+) {
+    /** Lo que permite el plan vigente del negocio que se edita (uno nuevo no tiene plan). */
+    val beneficios: Beneficios
+        get() = negocioExistente?.let { Destacados.beneficios(it) } ?: BeneficiosPlan.de(BeneficiosPlan.SIN_PLAN)
+
+    /** Vencimiento de la oferta ya publicada y todavía vigente, o 0. */
+    val ofertaActivaHasta: Long
+        get() = negocioExistente?.takeIf { it.ofertaTexto.isNotBlank() && it.ofertaHasta > System.currentTimeMillis() }
+            ?.ofertaHasta ?: 0
+}
 
 /** Id que usa la pantalla de edición para indicar "registrar un negocio nuevo". */
 const val NUEVO_NEGOCIO = 0L
@@ -67,7 +90,9 @@ class NegocioViewModel(application: Application) : AndroidViewModel(application)
         }
         viewModelScope.launch {
             uiState = uiState.copy(cargando = true)
-            uiState = uiState.copy(negocios = negocioRepository.obtenerPorDueno(usuario.correo), cargando = false)
+            val negocios = negocioRepository.obtenerPorDueno(usuario.correo)
+            if (usuario.notificacionesActivas) AvisadorVencimiento(getApplication()).revisar(negocios)
+            uiState = uiState.copy(negocios = negocios, cargando = false)
         }
     }
 
@@ -96,7 +121,13 @@ class NegocioViewModel(application: Application) : AndroidViewModel(application)
                     latitud = negocio.latitud,
                     longitud = negocio.longitud,
                     horario = negocio.horario,
-                    foto = negocio.fotos.firstOrNull().orEmpty(),
+                    fotos = negocio.fotos,
+                    facebook = negocio.facebook,
+                    instagram = negocio.instagram,
+                    tiktok = negocio.tiktok,
+                    // Una oferta vencida no vuelve a publicarse sola al guardar otros cambios.
+                    ofertaTexto = if (negocio.ofertaHasta > System.currentTimeMillis()) negocio.ofertaTexto else "",
+                    ofertaVigencia = null,
                     cargando = false
                 )
             } else {
@@ -150,8 +181,34 @@ class NegocioViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** Copia la imagen elegida de la galería al almacenamiento de la app y la usa como foto. */
+    fun onRedChange(red: RedSocial, valor: String) {
+        val errores = uiState.errores - red.name
+        uiState = when (red) {
+            RedSocial.FACEBOOK -> uiState.copy(facebook = valor, errores = errores)
+            RedSocial.INSTAGRAM -> uiState.copy(instagram = valor, errores = errores)
+            RedSocial.TIKTOK -> uiState.copy(tiktok = valor, errores = errores)
+        }
+    }
+
+    fun onOfertaChange(valor: String) {
+        uiState = uiState.copy(ofertaTexto = valor.take(BeneficiosPlan.MAX_CARACTERES_OFERTA))
+    }
+
+    fun onOfertaVigenciaChange(vigencia: VigenciaOferta) {
+        uiState = uiState.copy(ofertaVigencia = vigencia)
+    }
+
+    /** false (con aviso) si el plan no permite agregar otra foto. */
+    fun puedeAgregarFoto(): Boolean {
+        val maximo = uiState.beneficios.maxFotos
+        if (uiState.fotos.size < maximo) return true
+        uiState = uiState.copy(mensaje = LimiteFotos.mensaje(maximo))
+        return false
+    }
+
+    /** Copia la imagen elegida de la galería al almacenamiento de la app y la agrega a las fotos. */
     fun onFotoSeleccionada(uri: Uri) {
+        if (!puedeAgregarFoto()) return
         viewModelScope.launch {
             val app = getApplication<Application>()
             val ruta = withContext(Dispatchers.IO) { FotoNegocio.guardarCopia(app, uri) }
@@ -159,22 +216,14 @@ class NegocioViewModel(application: Application) : AndroidViewModel(application)
                 uiState = uiState.copy(mensaje = "No se pudo cargar la foto")
                 return@launch
             }
-            descartarFotoNoGuardada()
-            uiState = uiState.copy(foto = ruta)
+            uiState = uiState.copy(fotos = uiState.fotos + ruta)
         }
     }
 
-    fun onQuitarFoto() {
-        descartarFotoNoGuardada()
-        uiState = uiState.copy(foto = "")
-    }
-
-    /** Borra la copia del formulario solo si aún no forma parte del negocio guardado. */
-    private fun descartarFotoNoGuardada() {
-        val actual = uiState.foto
-        if (actual != uiState.negocioExistente?.fotos?.firstOrNull()) {
-            FotoNegocio.eliminarCopia(getApplication(), actual)
-        }
+    /** Borra la copia solo si aún no forma parte del negocio guardado. */
+    fun onQuitarFoto(foto: String) {
+        if (foto !in uiState.negocioExistente?.fotos.orEmpty()) FotoNegocio.eliminarCopia(getApplication(), foto)
+        uiState = uiState.copy(fotos = uiState.fotos - foto)
     }
 
     /** DS07: valida campos obligatorios y guarda con estado Pendiente. */
@@ -197,7 +246,7 @@ class NegocioViewModel(application: Application) : AndroidViewModel(application)
                 latitud = uiState.latitud!!,
                 longitud = uiState.longitud!!,
                 horario = uiState.horario.trim(),
-                fotos = if (uiState.foto.isBlank()) emptyList() else listOf(uiState.foto.trim()),
+                fotos = uiState.fotos,
                 estado = EstadoNegocio.PENDIENTE,
                 duenoId = IdDueno.deCorreo(usuario.correo)
             )
@@ -234,16 +283,38 @@ class NegocioViewModel(application: Application) : AndroidViewModel(application)
                 latitud = uiState.latitud!!,
                 longitud = uiState.longitud!!,
                 horario = uiState.horario.trim(),
-                fotos = if (uiState.foto.isBlank()) emptyList() else listOf(uiState.foto.trim())
-            )
+                fotos = uiState.fotos
+            ).conExtrasDelPlan()
             negocioRepository.actualizarNegocio(actualizado)
-            val fotoAnterior = negocioActual.fotos.firstOrNull()
-            if (fotoAnterior != actualizado.fotos.firstOrNull()) {
-                FotoNegocio.eliminarCopia(getApplication(), fotoAnterior)
-            }
+            (negocioActual.fotos - actualizado.fotos.toSet()).forEach { FotoNegocio.eliminarCopia(getApplication(), it) }
             uiState = uiState.copy(guardando = false, negocioExistente = actualizado, mensaje = "Cambios guardados")
             onExito()
         }
+    }
+
+    /** Redes y oferta: solo se cambian si el plan las incluye; si no, se conservan las guardadas. */
+    private fun Negocio.conExtrasDelPlan(): Negocio {
+        val beneficios = uiState.beneficios
+        var resultado = this
+        if (beneficios.redesSociales) {
+            resultado = resultado.copy(
+                facebook = RedSocial.FACEBOOK.normalizar(uiState.facebook).orEmpty(),
+                instagram = RedSocial.INSTAGRAM.normalizar(uiState.instagram).orEmpty(),
+                tiktok = RedSocial.TIKTOK.normalizar(uiState.tiktok).orEmpty()
+            )
+        }
+        if (beneficios.ofertaDelDia) {
+            val texto = uiState.ofertaTexto.trim()
+            val ahora = System.currentTimeMillis()
+            val hasta = when {
+                texto.isEmpty() -> 0L
+                else -> uiState.ofertaVigencia?.hasta(ahora)
+                    ?: uiState.ofertaActivaHasta.takeIf { it > 0 }
+                    ?: VigenciaOferta.HOY.hasta(ahora)
+            }
+            resultado = resultado.copy(ofertaTexto = texto, ofertaHasta = hasta)
+        }
+        return resultado
     }
 
     private fun validar(): Map<String, String> {
@@ -260,6 +331,15 @@ class NegocioViewModel(application: Application) : AndroidViewModel(application)
             errores["ubicacionGps"] = "Captura tu ubicación con el botón de arriba para aparecer en el mapa."
         }
         if (uiState.horario.isBlank()) errores["horario"] = "El horario es obligatorio."
+        if (uiState.beneficios.redesSociales) {
+            listOf(
+                RedSocial.FACEBOOK to uiState.facebook,
+                RedSocial.INSTAGRAM to uiState.instagram,
+                RedSocial.TIKTOK to uiState.tiktok
+            ).forEach { (red, valor) ->
+                if (red.normalizar(valor) == null) errores[red.name] = "Escribe tu usuario o un enlace de ${red.etiqueta}."
+            }
+        }
         return errores
     }
 

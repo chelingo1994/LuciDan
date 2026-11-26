@@ -41,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.justinianomarcelo.lucidanapp.data.model.PlanPublicidad
+import dev.justinianomarcelo.lucidanapp.util.BeneficiosPlan
+import java.util.Date
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -93,8 +95,7 @@ fun PlanesScreen(
                 .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            val contratacion = estado.contratacionActiva
-            if (contratacion != null) {
+            if (estado.nivelActivo > 0) {
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
@@ -102,16 +103,18 @@ fun PlanesScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         Icon(Icons.Filled.Star, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                         Text(
-                            "Destacado activo",
+                            "Plan activo hasta ${formatoFecha.format(Date(estado.activoHasta))}",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.padding(top = 8.dp)
                         )
-                        Text(
-                            "Vigente hasta ${formatoFecha.format(contratacion.fechaVencimiento)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        estado.planes.firstOrNull { it.nivel == estado.nivelActivo }?.let {
+                            Text(
+                                it.nombre,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
             }
@@ -122,9 +125,17 @@ fun PlanesScreen(
                 modifier = Modifier.padding(top = 20.dp, bottom = 12.dp)
             )
 
+            Text(
+                "Sin plan (gratis): tu negocio se muestra normal, con hasta ${BeneficiosPlan.de(BeneficiosPlan.SIN_PLAN).maxFotos} fotos.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
             estado.planes.forEach { plan ->
                 TarjetaPlan(
                     plan = plan,
+                    ahorro = if (plan.nivel == BeneficiosPlan.TRIMESTRAL) BeneficiosPlan.ahorroTrimestral(estado.planes) else 0.0,
                     contratando = estado.contratando,
                     onContratar = { viewModel.contratarPlan(plan.id) }
                 )
@@ -134,12 +145,26 @@ fun PlanesScreen(
 }
 
 @Composable
-private fun TarjetaPlan(plan: PlanPublicidad, contratando: Boolean, onContratar: () -> Unit) {
+private fun TarjetaPlan(plan: PlanPublicidad, ahorro: Double, contratando: Boolean, onContratar: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
+            if (ahorro > 0) {
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Text(
+                        "Más conveniente · ahorras Bs ${ahorro.toInt()} frente a 3 meses del mensual",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
+            }
             FilaTituloYPrecio(plan)
             Text(
                 "${plan.duracionDias} días",
@@ -147,11 +172,15 @@ private fun TarjetaPlan(plan: PlanPublicidad, contratando: Boolean, onContratar:
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
             )
-            Text(
-                plan.beneficios,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 12.dp)
-            )
+            Column(modifier = Modifier.padding(top = 12.dp)) {
+                plan.beneficios.lines().forEach { beneficio ->
+                    Text(
+                        "✓ $beneficio",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+            }
             Button(
                 onClick = onContratar,
                 enabled = !contratando,

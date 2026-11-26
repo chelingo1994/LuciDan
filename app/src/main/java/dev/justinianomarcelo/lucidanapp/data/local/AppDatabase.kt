@@ -16,7 +16,10 @@ import dev.justinianomarcelo.lucidanapp.data.model.PlanPublicidad
 import dev.justinianomarcelo.lucidanapp.data.model.Resena
 import dev.justinianomarcelo.lucidanapp.data.model.Rubro
 import dev.justinianomarcelo.lucidanapp.data.model.Usuario
+import dev.justinianomarcelo.lucidanapp.util.BeneficiosPlan
+import dev.justinianomarcelo.lucidanapp.util.Destacados
 import dev.justinianomarcelo.lucidanapp.util.FotoNegocio
+import dev.justinianomarcelo.lucidanapp.util.PlanVigente
 import dev.justinianomarcelo.lucidanapp.util.IdDueno
 import java.security.SecureRandom
 import kotlin.random.Random
@@ -28,7 +31,7 @@ import javax.crypto.spec.PBEKeySpec
         Usuario::class, Resena::class, Favorito::class, Negocio::class,
         PlanPublicidad::class, ContratacionPublicidad::class, EstadisticaNegocio::class
     ],
-    version = 12,
+    version = 14,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -364,6 +367,60 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Versión 13: HU10 ampliada. El negocio guarda el nivel y el vencimiento de su plan (viajan a Firestore)
+         * y el catálogo guarda el nivel. Las contrataciones activas se traspasan; no se borra ningún dato.
+         */
+        private val MIGRACION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `negocios` ADD COLUMN `planNivel` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `negocios` ADD COLUMN `destacadoHasta` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `planes_publicidad` ADD COLUMN `nivel` INTEGER NOT NULL DEFAULT 0")
+
+                val contratados = mutableMapOf<Long, MutableList<PlanVigente>>()
+                db.query(
+                    "SELECT c.negocioId, p.duracionDias, c.fechaVencimiento FROM contrataciones_publicidad c " +
+                        "JOIN planes_publicidad p ON p.id = c.planId WHERE c.activo = 1"
+                ).use {
+                    while (it.moveToNext()) {
+                        contratados.getOrPut(it.getLong(0)) { mutableListOf() }
+                            .add(PlanVigente(BeneficiosPlan.nivelPorDuracion(it.getInt(1)), it.getLong(2)))
+                    }
+                }
+                val ahora = System.currentTimeMillis()
+                contratados.forEach { (negocioId, planes) ->
+                    Destacados.mejorPlan(planes, ahora)?.let { plan ->
+                        db.execSQL(
+                            "UPDATE negocios SET planNivel = ?, destacadoHasta = ?, destacado = 1 WHERE id = ?",
+                            arrayOf<Any>(plan.nivel, plan.hasta, negocioId)
+                        )
+                    }
+                }
+            }
+        }
+
+        /** Versión 14: redes, oferta del día y sello verificado (ver [SQL_MIGRACION_13_14]). */
+        private val MIGRACION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                SQL_MIGRACION_13_14.forEach(db::execSQL)
+            }
+        }
+
+        /** Deja los 3 planes con sus beneficios y nivel actuales, sin duplicarlos ni cambiar sus ids. */
+        private fun actualizarCatalogoPlanes(db: SupportSQLiteDatabase) {
+            PlanesSemilla.lista.forEach { plan ->
+                db.execSQL(
+                    "UPDATE planes_publicidad SET duracionDias = ?, precio = ?, beneficios = ?, nivel = ? WHERE nombre = ?",
+                    arrayOf<Any>(plan.duracionDias, plan.precio, plan.beneficios, plan.nivel, plan.nombre)
+                )
+                db.execSQL(
+                    "INSERT INTO planes_publicidad (nombre, duracionDias, precio, beneficios, nivel) " +
+                        "SELECT ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM planes_publicidad WHERE nombre = ?)",
+                    arrayOf<Any>(plan.nombre, plan.duracionDias, plan.precio, plan.beneficios, plan.nivel, plan.nombre)
+                )
+            }
+        }
+
         @Volatile
         private var instancia: AppDatabase? = null
 
@@ -379,7 +436,7 @@ abstract class AppDatabase : RoomDatabase() {
                 .addMigrations(
                     MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4, MIGRACION_4_5, MIGRACION_5_6,
                     MIGRACION_6_7, MIGRACION_7_8, MIGRACION_8_9, migracion9a10(semilla), MIGRACION_10_11,
-                    MIGRACION_11_12
+                    MIGRACION_11_12, MIGRACION_12_13, MIGRACION_13_14
                 ).addCallback(object : Callback() {
                     // Síncrono y dentro de la transacción de creación: al abrir el mapa ya están los datos.
                     override fun onCreate(db: SupportSQLiteDatabase) {
@@ -390,7 +447,10 @@ abstract class AppDatabase : RoomDatabase() {
                     // INSERT OR IGNORE por id: el primer arranque carga los negocios y las aperturas siguientes no
                     // duplican nada. Los negocios agregados al final del archivo se cargan en la próxima apertura.
                     override fun onOpen(db: SupportSQLiteDatabase) {
-                        if (!db.isReadOnly) insertarNegociosSemilla(db, semilla)
+                        if (!db.isReadOnly) {
+                            insertarNegociosSemilla(db, semilla)
+                            actualizarCatalogoPlanes(db)
+                        }
                     }
                 }).build()
         }

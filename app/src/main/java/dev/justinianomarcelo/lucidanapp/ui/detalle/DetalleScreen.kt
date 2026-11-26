@@ -67,6 +67,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import dev.justinianomarcelo.lucidanapp.ui.componentes.InsigniaDestacado
+import dev.justinianomarcelo.lucidanapp.util.Destacados
+import dev.justinianomarcelo.lucidanapp.util.LimiteFotos
+import dev.justinianomarcelo.lucidanapp.util.Ofertas
+import dev.justinianomarcelo.lucidanapp.util.RedSocial
+import dev.justinianomarcelo.lucidanapp.util.Sello
+import dev.justinianomarcelo.lucidanapp.util.redesVisibles
+import dev.justinianomarcelo.lucidanapp.ui.componentes.CintaOferta
+import dev.justinianomarcelo.lucidanapp.ui.componentes.SelloVerificado
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.filled.Facebook
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
@@ -164,8 +179,11 @@ fun DetalleScreen(
                 .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            // Solo las fotos que permite el plan vigente; la elegida en la tira se ve grande.
+            val fotos = LimiteFotos.visibles(negocio)
+            var fotoElegida by remember(negocio.id) { mutableStateOf(0) }
             FotoNegocioImagen(
-                valor = negocio.fotos.firstOrNull(),
+                valor = fotos.getOrNull(fotoElegida) ?: fotos.firstOrNull(),
                 contentDescription = "Foto de ${negocio.nombre}",
                 modifier = Modifier
                     .fillMaxWidth()
@@ -174,6 +192,26 @@ fun DetalleScreen(
                     .clip(RoundedCornerShape(16.dp)),
                 rubro = negocio.categoria
             )
+            if (fotos.size > 1) {
+                LazyRow(
+                    modifier = Modifier.padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(fotos) { indice, foto ->
+                        FotoNegocioImagen(
+                            valor = foto,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable(onClickLabel = "Ver foto ${indice + 1}", role = Role.Button) { fotoElegida = indice },
+                            rubro = negocio.categoria
+                        )
+                    }
+                }
+            }
+            if (Destacados.beneficios(negocio).destacado) InsigniaDestacado(Modifier.padding(top = 12.dp))
+            if (Sello.visible(negocio)) SelloVerificado(Modifier.padding(top = 8.dp))
             Text(
                 negocio.nombre,
                 style = MaterialTheme.typography.headlineMedium,
@@ -199,6 +237,9 @@ fun DetalleScreen(
                     modifier = Modifier.size(16.dp)
                 )
                 Text("%.1f".format(negocio.promedioCalificacion), style = MaterialTheme.typography.labelLarge)
+            }
+            Ofertas.vigente(negocio)?.let {
+                CintaOferta("Oferta del día: $it", Modifier.padding(top = 12.dp), maxLineas = 3)
             }
             Text(
                 negocio.descripcion,
@@ -228,6 +269,23 @@ fun DetalleScreen(
                         (if (esCelular) "WhatsApp · " else "Llamar · ") + negocio.telefono,
                         modifier = Modifier.padding(start = 8.dp)
                     )
+                }
+            }
+
+            val redes = negocio.redesVisibles()
+            if (redes.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    redes.forEach { (red, enlace) ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            FilledTonalIconButton(onClick = { Contacto.abrirEnlace(context, enlace) }) {
+                                Icon(iconoDeRed(red), contentDescription = "Abrir ${red.etiqueta}")
+                            }
+                            Text(red.etiqueta, style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                 }
             }
 
@@ -381,6 +439,13 @@ fun DetalleScreen(
             }
         }
     }
+}
+
+/** Material no trae logotipos de marcas: se usan íconos genéricos junto al nombre de la red. */
+private fun iconoDeRed(red: RedSocial) = when (red) {
+    RedSocial.FACEBOOK -> Icons.Filled.Facebook
+    RedSocial.INSTAGRAM -> Icons.Filled.PhotoCamera
+    RedSocial.TIKTOK -> Icons.Filled.MusicNote
 }
 
 /**

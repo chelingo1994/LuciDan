@@ -62,6 +62,13 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun cambiarVerificado(negocioId: Long, verificado: Boolean) {
+        viewModelScope.launch {
+            negocioRepository.actualizarVerificado(negocioId, verificado)
+            refrescar()
+        }
+    }
+
     /** Al eliminar su último negocio, el dueño vuelve a rol VISITANTE (ya no administra ninguno). */
     fun eliminarNegocio(negocioId: Long) {
         viewModelScope.launch {

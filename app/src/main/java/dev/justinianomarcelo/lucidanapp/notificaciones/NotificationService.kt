@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import dev.justinianomarcelo.lucidanapp.MainActivity
 import dev.justinianomarcelo.lucidanapp.R
 import dev.justinianomarcelo.lucidanapp.data.model.Negocio
+import dev.justinianomarcelo.lucidanapp.util.AvisoVencimiento
 
 /**
  * Publica la notificación local de cercanía (DS08).
@@ -28,14 +29,41 @@ import dev.justinianomarcelo.lucidanapp.data.model.Negocio
  */
 class NotificationService(private val context: Context) {
 
+    private fun puedeNotificar(): Boolean = NotificationManagerCompat.from(context).areNotificationsEnabled() &&
+        (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+
+    /** Aviso al dueño de que su plan está por vencer. Devuelve false si el sistema no deja publicarlo. */
+    @SuppressLint("MissingPermission")
+    fun notificarVencimientoPlan(negocio: Negocio, dias: Int): Boolean {
+        if (!puedeNotificar()) return false
+        crearCanal(CANAL_PLAN_ID, "Planes de publicidad", "Avisos sobre el vencimiento de tu plan")
+        val id = "vence-${negocio.id}".hashCode()
+        // Sin CLEAR_TASK: solo trae la app al frente, sin cerrar la sesión abierta.
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_MAIN
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notificacion = NotificationCompat.Builder(context, CANAL_PLAN_ID)
+            .setSmallIcon(R.drawable.ic_notificacion)
+            .setContentTitle(AvisoVencimiento.texto(dias))
+            .setContentText(negocio.nombre)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(context).notify(id, notificacion)
+        return true
+    }
+
     @SuppressLint("MissingPermission")
     fun notificarNegocioCercano(negocio: Negocio) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        crearCanalSiNecesario()
+        if (!puedeNotificar()) return
+        crearCanal(CANAL_ID, "Negocios cercanos", "Avisos de negocios destacados cerca de tu ubicación")
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -60,19 +88,17 @@ class NotificationService(private val context: Context) {
         NotificationManagerCompat.from(context).notify(negocio.id.toInt(), notificacion)
     }
 
-    private fun crearCanalSiNecesario() {
+    private fun crearCanal(id: String, nombre: String, descripcion: String) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
-        val canal = NotificationChannel(
-            CANAL_ID,
-            "Negocios cercanos",
-            NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = "Avisos de negocios destacados cerca de tu ubicación"
+        val canal = NotificationChannel(id, nombre, NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = descripcion
         }
         manager.createNotificationChannel(canal)
     }
 
     companion object {
         const val CANAL_ID = "lucidan_cercania"
+        const val CANAL_PLAN_ID = "lucidan_plan"
     }
 }

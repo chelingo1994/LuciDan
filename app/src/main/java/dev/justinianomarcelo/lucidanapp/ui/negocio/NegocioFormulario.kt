@@ -12,9 +12,17 @@ import androidx.compose.material3.TextButton
 import androidx.compose.ui.draw.clip
 import dev.justinianomarcelo.lucidanapp.util.FotoNegocioImagen
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.Alignment
+import dev.justinianomarcelo.lucidanapp.util.Beneficios
+import dev.justinianomarcelo.lucidanapp.util.BeneficiosPlan
+import dev.justinianomarcelo.lucidanapp.util.RedSocial
+import dev.justinianomarcelo.lucidanapp.util.Tiempo
+import dev.justinianomarcelo.lucidanapp.util.VigenciaOferta
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
@@ -49,7 +56,12 @@ fun NegocioFormulario(
     telefono: String,
     direccion: String,
     horario: String,
-    foto: String,
+    fotos: List<String>,
+    beneficios: Beneficios,
+    redes: Map<RedSocial, String>,
+    ofertaTexto: String,
+    ofertaVigencia: VigenciaOferta?,
+    ofertaActivaHasta: Long,
     latitud: Double?,
     longitud: Double?,
     obteniendoUbicacion: Boolean,
@@ -64,7 +76,11 @@ fun NegocioFormulario(
     onHorarioChange: (String) -> Unit,
     onUsarUbicacionActual: () -> Unit,
     onFotoSeleccionada: (Uri) -> Unit,
-    onQuitarFoto: () -> Unit,
+    puedeAgregarFoto: () -> Boolean,
+    onQuitarFoto: (String) -> Unit,
+    onRedChange: (RedSocial, String) -> Unit,
+    onOfertaChange: (String) -> Unit,
+    onOfertaVigenciaChange: (VigenciaOferta) -> Unit,
     onGuardar: () -> Unit
 ) {
     val selectorFoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -164,30 +180,99 @@ fun NegocioFormulario(
             supportingText = { errores["horario"]?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
         )
-        Text("Foto del negocio (opcional)", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
-        if (foto.isNotBlank()) {
-            FotoNegocioImagen(
-                valor = foto,
-                contentDescription = "Foto del negocio",
-                modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(16.dp))
+        Text(
+            "Fotos del negocio (opcional) · ${fotos.size} de ${beneficios.maxFotos}",
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+        )
+        if (fotos.isNotEmpty()) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                itemsIndexed(fotos) { indice, foto ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FotoNegocioImagen(
+                            valor = foto,
+                            contentDescription = "Foto ${indice + 1} del negocio",
+                            modifier = Modifier.size(width = 144.dp, height = 108.dp).clip(RoundedCornerShape(16.dp))
+                        )
+                        TextButton(onClick = { onQuitarFoto(foto) }) { Text("Quitar") }
+                    }
+                }
+            }
+        }
+        if (fotos.size > beneficios.maxFotos) {
+            Text(
+                "Tu ficha muestra solo las primeras ${beneficios.maxFotos}; las demás se conservan.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = if (foto.isNotBlank()) 8.dp else 0.dp)
-        ) {
-            OutlinedButton(
-                onClick = {
+        OutlinedButton(
+            onClick = {
+                if (puedeAgregarFoto()) {
                     selectorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                },
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.Filled.Image, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(if (foto.isBlank()) "Elegir foto" else "Cambiar foto", modifier = Modifier.padding(start = 8.dp))
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Icon(Icons.Filled.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(if (fotos.isEmpty()) "Elegir foto" else "Agregar foto", modifier = Modifier.padding(start = 8.dp))
+        }
+
+        if (beneficios.redesSociales) {
+            Text("Redes sociales (opcional)", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 16.dp))
+            RedSocial.entries.forEach { red ->
+                OutlinedTextField(
+                    value = redes[red].orEmpty(),
+                    onValueChange = { onRedChange(red, it) },
+                    label = { Text("${red.etiqueta}: usuario o enlace") },
+                    singleLine = true,
+                    isError = errores.containsKey(red.name),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    shape = RoundedCornerShape(16.dp),
+                    supportingText = { errores[red.name]?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                )
             }
-            if (foto.isNotBlank()) {
-                TextButton(onClick = onQuitarFoto) { Text("Quitar") }
+        }
+
+        if (beneficios.ofertaDelDia) {
+            OutlinedTextField(
+                value = ofertaTexto,
+                onValueChange = onOfertaChange,
+                label = { Text("Oferta del día (opcional)") },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                supportingText = { Text("${ofertaTexto.length}/${BeneficiosPlan.MAX_CARACTERES_OFERTA}") },
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+            )
+            // Sin elegir nada, una oferta ya publicada conserva su vencimiento.
+            val seleccionada = ofertaVigencia ?: VigenciaOferta.HOY.takeIf { ofertaActivaHasta == 0L }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                VigenciaOferta.entries.forEach { vigencia ->
+                    FilterChip(
+                        selected = vigencia == seleccionada,
+                        onClick = { onOfertaVigenciaChange(vigencia) },
+                        label = { Text(vigencia.etiqueta) }
+                    )
+                }
             }
+            if (ofertaVigencia == null && ofertaActivaHasta > 0) {
+                Text(
+                    "Oferta publicada hasta ${Tiempo.fechaHora(ofertaActivaHasta)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        if (!beneficios.ofertaDelDia) {
+            Text(
+                if (beneficios.redesSociales) "La «Oferta del día» está disponible con el plan Trimestral."
+                else "Con un plan de publicidad puedes subir más fotos, enlazar tus redes y publicar ofertas.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 16.dp)
+            )
         }
 
         Button(

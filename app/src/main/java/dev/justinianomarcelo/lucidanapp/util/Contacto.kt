@@ -4,10 +4,12 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import java.net.URLEncoder
 
 /** Contacto directo con un negocio: WhatsApp si el número es celular y la app está instalada; si no, el marcador. */
 object Contacto {
     private const val CODIGO_BOLIVIA = "591"
+    const val MENSAJE_WHATSAPP = "Hola, vi su negocio en LuciDan"
     private val APPS_WHATSAPP = listOf("com.whatsapp", "com.whatsapp.w4b")
 
     /** Solo dígitos, tal como se marca. Vacío si no hay número. */
@@ -25,12 +27,17 @@ object Contacto {
 
     fun esCelular(telefono: String) = numeroWhatsapp(telefono) != null
 
+    /** Enlace del chat con el mensaje ya escrito, o null si el número no tiene WhatsApp. */
+    fun enlaceWhatsapp(telefono: String): String? = numeroWhatsapp(telefono)?.let {
+        "https://wa.me/$it?text=" + URLEncoder.encode(MENSAJE_WHATSAPP, "UTF-8").replace("+", "%20")
+    }
+
     /** Abre el chat de WhatsApp con el negocio; si no hay WhatsApp (o no es celular) abre el marcador. */
     fun contactar(context: Context, telefono: String) {
-        val numero = numeroWhatsapp(telefono)
-        if (numero != null) {
+        val enlace = enlaceWhatsapp(telefono)
+        if (enlace != null) {
             for (paquete in APPS_WHATSAPP) {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$numero")).setPackage(paquete)
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(enlace)).setPackage(paquete)
                 try {
                     context.startActivity(intent)
                     return
@@ -40,6 +47,15 @@ object Contacto {
             }
         }
         llamar(context, telefono)
+    }
+
+    /** Abre un enlace en la app que lo maneje (red social) o en el navegador. */
+    fun abrirEnlace(context: Context, enlace: String) {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(enlace)))
+        } catch (_: ActivityNotFoundException) {
+            // Sin navegador ni app que abra el enlace: no hay nada más que ofrecer.
+        }
     }
 
     fun llamar(context: Context, telefono: String) {

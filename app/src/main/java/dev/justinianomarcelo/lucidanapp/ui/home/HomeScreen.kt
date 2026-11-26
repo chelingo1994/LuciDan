@@ -101,7 +101,11 @@ import dev.justinianomarcelo.lucidanapp.auth.SessionManager
 import dev.justinianomarcelo.lucidanapp.data.model.Rubro
 import dev.justinianomarcelo.lucidanapp.data.model.Negocio
 import dev.justinianomarcelo.lucidanapp.data.model.RolUsuario
+import dev.justinianomarcelo.lucidanapp.ui.componentes.InsigniaDestacado
+import dev.justinianomarcelo.lucidanapp.ui.componentes.CintaOferta
+import dev.justinianomarcelo.lucidanapp.util.Ofertas
 import dev.justinianomarcelo.lucidanapp.util.BermejoZona
+import dev.justinianomarcelo.lucidanapp.util.Destacados
 import dev.justinianomarcelo.lucidanapp.util.FotoNegocioImagen
 import dev.justinianomarcelo.lucidanapp.util.color
 import androidx.compose.ui.graphics.toArgb
@@ -248,6 +252,8 @@ fun HomeScreen(
             sheetContent = {
                 ListaNegociosCercanos(
                     negocios = estado.negocios,
+                    enRadio = estado.enRadio,
+                    carrusel = estado.carrusel,
                     origenLat = estado.puntoSeleccionadoManual?.latitude ?: estado.ubicacionActual?.latitud,
                     origenLng = estado.puntoSeleccionadoManual?.longitude ?: estado.ubicacionActual?.longitud,
                     onNegocioClick = onNegocioClick,
@@ -468,25 +474,30 @@ private fun MapaNegocios(
             }
             vista.overlays.add(grupos)
             // Los del norte se dibujan primero y los del sur encima (la punta del pin queda abajo).
+            val ahora = System.currentTimeMillis()
             val marcadores = negocios.sortedWith(compareByDescending<Negocio> { it.latitud }.thenBy { it.id })
                 .map { negocio ->
                     val seleccionado = negocio.id == seleccionadoId
-                    Marker(vista).apply {
+                    val destacado = Destacados.beneficios(negocio, ahora).destacado
+                    val marcador = Marker(vista).apply {
                         position = GeoPoint(negocio.latitud, negocio.longitud)
                         title = negocio.nombre
                         snippet = negocio.categoria.etiqueta
                         // Drawable propio por marcador (el bitmap viene del caché); no se tiñe el ícono por defecto.
-                        icon = MarcadorIconos.pin(context, negocio.categoria, seleccionado, negocio.destacado)
+                        icon = MarcadorIconos.pin(context, negocio.categoria, seleccionado, destacado)
                         setAnchor(MarcadorIconos.ANCLA_X, MarcadorIconos.ANCLA_Y)
                         setOnMarkerClickListener { _, _ ->
                             onSeleccionarActual.value(negocio.id)
                             onNegocioClickActual.value(negocio.id)
                             true
                         }
-                    } to seleccionado
+                    }
+                    Triple(marcador, seleccionado, destacado)
                 }
-            marcadores.filterNot { it.second }.forEach { grupos.add(it.first) }
+            marcadores.filterNot { it.second || it.third }.forEach { grupos.add(it.first) }
             grupos.invalidate()
+            // Los destacados no se agrupan y van encima de los demás; el seleccionado, encima de todos.
+            marcadores.filter { it.third && !it.second }.forEach { vista.overlays.add(it.first) }
             marcadores.filter { it.second }.forEach { vista.overlays.add(it.first) }
             puntoSeleccionadoManual?.let { punto ->
                 vista.overlays.add(
@@ -577,6 +588,8 @@ private fun SelectorDeRubro(
 @Composable
 private fun ListaNegociosCercanos(
     negocios: List<Negocio>,
+    enRadio: Int,
+    carrusel: List<Negocio>,
     origenLat: Double?,
     origenLng: Double?,
     onNegocioClick: (Long) -> Unit,
@@ -585,21 +598,27 @@ private fun ListaNegociosCercanos(
     onAmpliarBusqueda: (Boolean) -> Unit
 ) {
     val total = negocios.size
+    val lejanos = total - enRadio
     val zona = if (busquedaAmpliada) "en Bermejo" else "cerca"
+    val resumen = when {
+        total == 0 -> "Sin resultados ${if (busquedaAmpliada) "en Bermejo" else "en este radio"}"
+        lejanos > 0 -> "$enRadio $zona · $lejanos ${if (lejanos == 1) "destacado" else "destacados"} más lejos"
+        else -> "$total ${if (total == 1) "negocio" else "negocios"} $zona"
+    }
+    val ahora = System.currentTimeMillis()
     Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.6f)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                if (total == 0) "Sin resultados ${if (busquedaAmpliada) "en Bermejo" else "en este radio"}"
-                else "$total ${if (total == 1) "negocio" else "negocios"} $zona",
+                resumen,
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f).padding(vertical = 4.dp)
             )
             if (busquedaAmpliada) {
                 TextButton(onClick = { onAmpliarBusqueda(false) }) { Text("Usar radio") }
-            } else if (total == 0 && consulta.isNotBlank()) {
+            } else if (enRadio == 0 && consulta.isNotBlank()) {
                 TextButton(onClick = { onAmpliarBusqueda(true) }) { Text("Buscar en todo Bermejo") }
             }
         }
@@ -607,6 +626,9 @@ private fun ListaNegociosCercanos(
         // La hoja llega hasta el borde inferior (edge-to-edge): el último negocio no debe quedar bajo la barra del sistema.
         val barraSistema = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp + barraSistema)) {
+            if (carrusel.isNotEmpty()) {
+                item(key = "carrusel") { CarruselDestacados(carrusel, onNegocioClick) }
+            }
             items(negocios, key = { "negocio-${it.id}" }) { negocio ->
                 FilaCercana(
                     nombre = negocio.nombre,
@@ -614,10 +636,51 @@ private fun ListaNegociosCercanos(
                     foto = negocio.fotos.firstOrNull(),
                     rubro = negocio.categoria,
                     distanciaMetros = origenLat?.let { lat -> origenLng?.let { lng -> negocio.calcularDistancia(lat, lng) } },
+                    destacado = Destacados.beneficios(negocio, ahora).destacado,
+                    oferta = Ofertas.vigente(negocio, ahora),
                     onClick = { onNegocioClick(negocio.id) }
                 )
             }
         }
+    }
+}
+
+/** Carrusel «Destacados» (plan Trimestral). */
+@Composable
+private fun CarruselDestacados(negocios: List<Negocio>, onNegocioClick: (Long) -> Unit) {
+    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+        Text(
+            "Destacados",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(negocios, key = { it.id }) { negocio ->
+                Surface(
+                    modifier = Modifier
+                        .width(160.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable(onClickLabel = "Ver ${negocio.nombre}", role = Role.Button) { onNegocioClick(negocio.id) },
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                ) {
+                    Column {
+                        FotoNegocioImagen(
+                            negocio.fotos.firstOrNull(), null,
+                            Modifier.fillMaxWidth().height(96.dp), rubro = negocio.categoria
+                        )
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(negocio.nombre, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            InsigniaDestacado(Modifier.padding(top = 4.dp))
+                            Ofertas.vigente(negocio)?.let { CintaOferta(it, Modifier.padding(top = 4.dp)) }
+                        }
+                    }
+                }
+            }
+        }
+        HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
     }
 }
 
@@ -628,6 +691,8 @@ private fun FilaCercana(
     foto: String?,
     rubro: Rubro,
     distanciaMetros: Double?,
+    destacado: Boolean,
+    oferta: String?,
     onClick: () -> Unit
 ) {
     Row(
@@ -649,6 +714,8 @@ private fun FilaCercana(
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(nombre, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (destacado) InsigniaDestacado(Modifier.padding(vertical = 2.dp))
+            if (oferta != null) CintaOferta(oferta, Modifier.padding(vertical = 2.dp))
             Text(
                 etiqueta,
                 style = MaterialTheme.typography.bodySmall,

@@ -11,6 +11,7 @@ import dev.justinianomarcelo.lucidanapp.data.local.AppDatabase
 import dev.justinianomarcelo.lucidanapp.data.repository.ContratacionRepository
 import dev.justinianomarcelo.lucidanapp.data.repository.NegocioRepository
 import dev.justinianomarcelo.lucidanapp.data.repository.PlanPublicidadRepository
+import dev.justinianomarcelo.lucidanapp.util.Destacados
 import kotlinx.coroutines.launch
 
 /** Implementa DS09 (HU10): selección y contratación de un plan de publicidad. */
@@ -40,12 +41,13 @@ class PlanViewModel(application: Application) : AndroidViewModel(application) {
                 uiState = uiState.copy(cargando = false)
                 return@launch
             }
-            val planes = planPublicidadRepository.obtenerPlanes()
-            val contratacionActiva = contratacionRepository.obtenerActivaPorNegocio(negocio.id)
+            contratacionRepository.aplicarPlanes()
+            val actual = negocioRepository.obtenerNegocioPorId(negocio.id) ?: negocio
             uiState = uiState.copy(
                 negocioId = negocio.id,
-                planes = planes,
-                contratacionActiva = contratacionActiva,
+                planes = planPublicidadRepository.obtenerPlanes().sortedBy { it.nivel },
+                nivelActivo = Destacados.nivelVigente(actual),
+                activoHasta = actual.destacadoHasta,
                 cargando = false
             )
         }
@@ -57,11 +59,13 @@ class PlanViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             uiState = uiState.copy(contratando = true)
             val plan = uiState.planes.firstOrNull { it.id == planId } ?: return@launch
-            val contratacion = contratacionRepository.registrarContratacion(negocioId, planId, plan.duracionDias)
+            contratacionRepository.registrarContratacion(negocioId, planId, plan.duracionDias)
+            val actual = negocioRepository.obtenerNegocioPorId(negocioId)
             uiState = uiState.copy(
                 contratando = false,
-                contratacionActiva = contratacion,
-                mensaje = "Negocio destacado activo"
+                nivelActivo = actual?.let { Destacados.nivelVigente(it) } ?: 0,
+                activoHasta = actual?.destacadoHasta ?: 0,
+                mensaje = "Plan contratado"
             )
         }
     }

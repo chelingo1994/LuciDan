@@ -8,8 +8,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.justinianomarcelo.lucidanapp.auth.SessionManager
 import dev.justinianomarcelo.lucidanapp.data.local.AppDatabase
+import dev.justinianomarcelo.lucidanapp.data.model.Rubro
 import dev.justinianomarcelo.lucidanapp.data.repository.EstadisticaRepository
 import dev.justinianomarcelo.lucidanapp.data.repository.NegocioRepository
+import dev.justinianomarcelo.lucidanapp.util.Destacados
 import kotlinx.coroutines.launch
 
 /** Implementa DS10 (HU11): consulta del panel de estadísticas del negocio. */
@@ -20,6 +22,9 @@ class EstadisticaViewModel(application: Application) : AndroidViewModel(applicat
 
     var uiState by mutableStateOf(EstadisticaUiState())
         private set
+
+    /** Rubro del negocio consultado, solo si su plan incluye la comparación. */
+    private var rubroAComparar: Rubro? = null
 
     fun cargarResumen(negocioId: Long) {
         val usuario = SessionManager.usuarioActual.value
@@ -34,7 +39,12 @@ class EstadisticaViewModel(application: Application) : AndroidViewModel(applicat
                 uiState = uiState.copy(cargando = false)
                 return@launch
             }
-            uiState = uiState.copy(negocioId = negocio.id)
+            rubroAComparar = negocio.categoria.takeIf { Destacados.beneficios(negocio).comparacionRubro }
+            uiState = uiState.copy(
+                rubro = negocio.categoria.etiqueta,
+                negocioId = negocio.id,
+                porPeriodo = Destacados.beneficios(negocio).estadisticasPorPeriodo
+            )
             actualizarConteo()
         }
     }
@@ -48,8 +58,10 @@ class EstadisticaViewModel(application: Application) : AndroidViewModel(applicat
         val negocioId = uiState.negocioId ?: return
         viewModelScope.launch {
             uiState = uiState.copy(cargando = true)
-            val resumen = estadisticaRepository.obtenerConteo(negocioId, uiState.periodoDias)
-            uiState = uiState.copy(vistas = resumen.vistas, clics = resumen.clics, cargando = false)
+            val periodo = uiState.periodoDias.takeIf { uiState.porPeriodo }
+            val resumen = estadisticaRepository.obtenerConteo(negocioId, periodo)
+            val promedio = rubroAComparar?.let { estadisticaRepository.obtenerPromedioRubro(negocioId, it, periodo) }
+            uiState = uiState.copy(vistas = resumen.vistas, clics = resumen.clics, promedioRubro = promedio, cargando = false)
         }
     }
 }

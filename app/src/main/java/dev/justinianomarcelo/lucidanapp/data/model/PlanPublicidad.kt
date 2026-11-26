@@ -1,5 +1,6 @@
 package dev.justinianomarcelo.lucidanapp.data.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -10,5 +11,8 @@ data class PlanPublicidad(
     val nombre: String,
     val duracionDias: Int,
     val precio: Double,
-    val beneficios: String
+    /** Una línea por beneficio. */
+    val beneficios: String,
+    @ColumnInfo(defaultValue = "0")
+    val nivel: Int = 0
 )

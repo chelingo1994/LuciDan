@@ -53,6 +53,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.justinianomarcelo.lucidanapp.data.model.EstadoNegocio
 import dev.justinianomarcelo.lucidanapp.data.model.Negocio
+import dev.justinianomarcelo.lucidanapp.ui.componentes.InsigniaDestacado
+import dev.justinianomarcelo.lucidanapp.util.Destacados
+import dev.justinianomarcelo.lucidanapp.util.LimiteFotos
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * "Mis negocios" (HU08/HU09): un usuario puede tener 0 o varios negocios (diagrama de clases, 0..*).
@@ -182,6 +188,24 @@ private fun TarjetaNegocio(
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(top = 12.dp)
             )
+            if (Destacados.nivelVigente(negocio) > 0) {
+                InsigniaDestacado(Modifier.padding(top = 4.dp))
+                Text(
+                    "Plan activo hasta ${SimpleDateFormat("dd/MM/yyyy", Locale("es", "BO")).format(Date(negocio.destacadoHasta))}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            val maximoFotos = LimiteFotos.maximo(negocio)
+            if (negocio.fotos.size > maximoFotos) {
+                Text(
+                    "Tienes ${negocio.fotos.size} fotos y tu plan muestra solo las primeras $maximoFotos. " +
+                        "No se borró ninguna: renueva o mejora tu plan para mostrarlas.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
             Text(
                 negocio.categoria.etiqueta,
                 style = MaterialTheme.typography.bodyMedium,

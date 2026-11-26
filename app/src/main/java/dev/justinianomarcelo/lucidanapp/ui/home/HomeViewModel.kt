@@ -16,6 +16,7 @@ import dev.justinianomarcelo.lucidanapp.data.repository.ResenaRepository
 import dev.justinianomarcelo.lucidanapp.data.repository.UsuarioRepository
 import dev.justinianomarcelo.lucidanapp.location.Coordenada
 import dev.justinianomarcelo.lucidanapp.location.LocationService
+import dev.justinianomarcelo.lucidanapp.notificaciones.AvisadorVencimiento
 import dev.justinianomarcelo.lucidanapp.notificaciones.GeofenceManager
 import dev.justinianomarcelo.lucidanapp.util.BermejoZona
 import dev.justinianomarcelo.lucidanapp.data.model.Negocio
@@ -59,11 +60,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             uiState = uiState.copy(cargando = true)
             // DS09: sustituye al proceso programado de desactivación de planes vencidos.
             contratacionRepository.desactivarVencidas()
+            contratacionRepository.aplicarPlanes()
             val ubicacion = locationService.obtenerUbicacionActual()
                 ?: Coordenada(BermejoZona.LATITUD_CENTRO, BermejoZona.LONGITUD_CENTRO)
             uiState = uiState.copy(ubicacionActual = ubicacion, puntoSeleccionadoManual = null)
             actualizarNegocios(ubicacion.latitud, ubicacion.longitud)
             sincronizarConNube()
+            avisarPlanesPorVencer()
         }
     }
 
@@ -79,6 +82,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val negociosOk = negocioRepository.sincronizar { negocio: Negocio ->
             subirHuerfanos && negocio.duenoId in duenos
         }
+        // La nube (o su caché) pudo traer el negocio sin los datos del plan: se reponen los contratados aquí.
+        contratacionRepository.aplicarPlanes()
         if (negociosOk) {
             prefs.edit().putBoolean(CLAVE_NEGOCIOS_SUBIDOS, true).apply()
             // Las reseñas cuelgan de los negocios, así que se bajan después de ellos.
@@ -86,6 +91,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             // Un fallo de reseñas no debe impedir refrescar el mapa; este recálculo ya incluye los promedios.
             origenActivo()?.let { actualizarNegocios(it.first, it.second) }
         }
+    }
+
+    /** Aviso al dueño (plan Trimestral) cuando faltan pocos días; sin backend, se revisa al abrir la app. */
+    private suspend fun avisarPlanesPorVencer() {
+        val usuario = SessionManager.usuarioActual.value ?: return
+        if (!usuario.notificacionesActivas) return
+        AvisadorVencimiento(getApplication()).revisar(negocioRepository.obtenerPorDueno(usuario.correo))
     }
 
     fun onRadioSeleccionado(radioMetros: Double) {
@@ -152,7 +164,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             val negocios = negocioRepository.obtenerNegociosCercanos(
                 lat, lng, radio, uiState.categoriaSeleccionada, uiState.consulta
             )
-            uiState = uiState.copy(negocios = negocios, cargando = false)
+            uiState = uiState.copy(
+                negocios = negocios,
+                enRadio = negocios.count { it.calcularDistancia(lat, lng) <= radio },
+                carrusel = negocioRepository.obtenerParaCarrusel(),
+                cargando = false
+            )
             // Las geocercas no dependen del texto buscado: no se recalculan en cada tecla.
             if (registrarGeocercas) registrarNotificacionesCercania(lat, lng)
         }

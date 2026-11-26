@@ -38,8 +38,12 @@ interface NegocioDao {
     suspend fun actualizarPromedio(negocioId: Long, promedio: Double)
 
     /** DS09: prioridad en los resultados mientras el plan de publicidad esté activo (HU10). */
-    @Query("UPDATE negocios SET destacado = :destacado WHERE id = :negocioId")
-    suspend fun actualizarEstadoDestacado(negocioId: Long, destacado: Boolean)
+    @Query("UPDATE negocios SET destacado = :destacado, planNivel = :nivel, destacadoHasta = :hasta WHERE id = :negocioId")
+    suspend fun actualizarPlan(negocioId: Long, destacado: Boolean, nivel: Int, hasta: Long)
+
+    /** HU14: sello «Negocio verificado». */
+    @Query("UPDATE negocios SET verificado = :verificado WHERE id = :negocioId")
+    suspend fun actualizarVerificado(negocioId: Long, verificado: Boolean)
 
     /** DS11 (HU14): panel de administración. */
     @Query("SELECT * FROM negocios")

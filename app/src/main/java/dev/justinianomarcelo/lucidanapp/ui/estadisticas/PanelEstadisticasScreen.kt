@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import dev.justinianomarcelo.lucidanapp.data.repository.PromedioRubro
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Directions
@@ -75,11 +78,20 @@ fun PanelEstadisticasScreen(
             return@Scaffold
         }
 
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            SelectorDePeriodo(
-                periodoSeleccionado = estado.periodoDias,
-                onPeriodoSeleccionado = viewModel::onPeriodoSeleccionado
-            )
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).verticalScroll(rememberScrollState())) {
+            if (estado.porPeriodo) {
+                SelectorDePeriodo(
+                    periodoSeleccionado = estado.periodoDias,
+                    onPeriodoSeleccionado = viewModel::onPeriodoSeleccionado
+                )
+            } else {
+                Text(
+                    "Totales. El filtro por período se incluye en los planes Mensual y Trimestral.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -97,6 +109,54 @@ fun PanelEstadisticasScreen(
                     valor = estado.clics
                 )
             }
+            val promedio = estado.promedioRubro
+            if (promedio != null) {
+                ComparacionConRubro(estado.rubro, estado.vistas, estado.clics, promedio)
+            } else if (!estado.porPeriodo) {
+                Text(
+                    "La comparación con tu rubro se incluye en los planes Mensual y Trimestral.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ComparacionConRubro(rubro: String, vistas: Int, clics: Int, promedio: PromedioRubro) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("Comparación con tu rubro", style = MaterialTheme.typography.titleMedium)
+            if (promedio.otros == 0) {
+                Text(
+                    "No hay otros negocios publicados de $rubro para comparar.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            } else {
+                Text(
+                    "Vistas: tú $vistas · promedio ${"%.1f".format(promedio.vistas)}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                Text(
+                    "Cómo llegar: tú $clics · promedio ${"%.1f".format(promedio.clics)}",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    "Promedio de ${promedio.otros} ${if (promedio.otros == 1) "negocio" else "negocios"} de $rubro.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            Text(
+                "Referencial (datos de este teléfono).",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

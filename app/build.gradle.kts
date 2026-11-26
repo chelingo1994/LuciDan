@@ -73,6 +73,8 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.junit)
+    // Solo para probar en la JVM el SQL de las migraciones.
+    testImplementation(libs.sqlite.jdbc)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

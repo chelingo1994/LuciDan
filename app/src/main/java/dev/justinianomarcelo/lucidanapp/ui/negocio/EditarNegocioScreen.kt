@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.justinianomarcelo.lucidanapp.util.RedSocial
 
 /**
  * TA-09-01/02/03: edición del perfil de negocio, con carga y guardado inmediato. Con
@@ -106,7 +107,16 @@ fun EditarNegocioScreen(
                 telefono = estado.telefono,
                 direccion = estado.direccion,
                 horario = estado.horario,
-                foto = estado.foto,
+                fotos = estado.fotos,
+                beneficios = estado.beneficios,
+                redes = mapOf(
+                    RedSocial.FACEBOOK to estado.facebook,
+                    RedSocial.INSTAGRAM to estado.instagram,
+                    RedSocial.TIKTOK to estado.tiktok
+                ),
+                ofertaTexto = estado.ofertaTexto,
+                ofertaVigencia = estado.ofertaVigencia,
+                ofertaActivaHasta = estado.ofertaActivaHasta,
                 latitud = estado.latitud,
                 longitud = estado.longitud,
                 obteniendoUbicacion = estado.obteniendoUbicacion,
@@ -121,7 +131,11 @@ fun EditarNegocioScreen(
                 onHorarioChange = viewModel::onHorarioChange,
                 onUsarUbicacionActual = viewModel::onUsarUbicacionActual,
                 onFotoSeleccionada = viewModel::onFotoSeleccionada,
+                puedeAgregarFoto = viewModel::puedeAgregarFoto,
                 onQuitarFoto = viewModel::onQuitarFoto,
+                onRedChange = viewModel::onRedChange,
+                onOfertaChange = viewModel::onOfertaChange,
+                onOfertaVigenciaChange = viewModel::onOfertaVigenciaChange,
                 onGuardar = {
                     if (esNuevo) viewModel.registrarNegocio(onVolver) else viewModel.guardarCambios(onVolver)
                 }

@@ -13,6 +13,10 @@ data class HomeUiState(
     /** true: la búsqueda de texto ignora el radio y recorre toda la zona de Bermejo. */
     val busquedaAmpliada: Boolean = false,
     val negocios: List<Negocio> = emptyList(),
+    /** Cuántos de [negocios] están dentro del radio; el resto son destacados más lejanos. */
+    val enRadio: Int = 0,
+    /** Destacados de nivel 3 vigentes para el carrusel (no dependen del radio ni del rubro). */
+    val carrusel: List<Negocio> = emptyList(),
     val puntoSeleccionadoManual: GeoPoint? = null,
     val mensaje: String? = null,
     val cargando: Boolean = false

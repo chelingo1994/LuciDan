@@ -357,5 +357,69 @@ Modificados (principales)
    Pruebas: 29 pruebas JUnit en verde.
 
 ============================================================================
+HU10 AMPLIADA: BENEFICIOS POR PLAN DE PUBLICIDAD (25/11/2026)
+============================================================================
+Qué cambió:
+- Semanal (nivel 1): insignia «Destacado», pin con estrella, primero en la lista y visible en el mapa sin importar
+  el radio. Mensual (2): + aviso de cercanía y estadísticas por período. Trimestral (3): + carrusel «Destacados»
+  y etiqueta «Más conveniente» (ahorro de Bs 50 frente a 3 meses del mensual).
+- Tarjetas de planes con beneficios con marca de verificación; «Plan activo hasta dd/MM/yyyy» en Planes y Mis negocios.
+- Room 12 -> 13: negocios.planNivel, negocios.destacadoHasta, planes_publicidad.nivel. La migración traspasa las
+  contrataciones activas. El catálogo se actualiza por nombre al abrir, sin duplicar.
+- Firestore: viajan destacado, planNivel y destacadoHasta. firestore.rules sin cambios.
+
+Archivos nuevos: util/BeneficiosPlan.kt, util/Destacados.kt, ui/componentes/InsigniaDestacado.kt,
+BeneficiosPlanTest.kt, DestacadosTest.kt.
+Archivos modificados: AppDatabase, ContratacionDao, NegocioDao, PlanesSemilla, Negocio, PlanPublicidad, NubeService,
+ContratacionRepository, EstadisticaRepository, NegocioRepository, GeofenceBroadcastReceiver, DetalleScreen,
+EstadisticaUiState, EstadisticaViewModel, PanelEstadisticasScreen, HomeScreen, HomeUiState, HomeViewModel,
+PanelNegocioScreen, PlanViewModel, PlanesScreen, PlanesUiState, CLAUDE.md.
+
+Decisiones:
+- La vigencia se calcula al leer; un plan vencido no destaca aunque no se haya actualizado nada.
+- Un destacado=true sin vencimiento (incluidos los «SI» de la semilla) ya no destaca.
+- El pin es la variante «destacado» del diseño: color del rubro con insignia dorada y estrella.
+- El buscador de texto sí se aplica a los destacados; el rubro también (constante en false).
+- El carrusel va al inicio de la lista inferior y no depende del radio ni del rubro.
+- Sin plan o con nivel 1, estadísticas solo con totales.
+- Si hay varias contrataciones, vale la de mayor nivel; los días no se acumulan.
+
+Pruebas: 39 JUnit en verde. La migración se verificó comparando con SQLite los esquemas que genera Room;
+falta probarla en un teléfono y probar la sincronización con dos teléfonos.
+
+============================================================================
+HU10: SEGUNDA PARTE DE LOS BENEFICIOS POR PLAN (25/11/2026)
+============================================================================
+Qué cambió:
+- Varias fotos por negocio con límite por plan (sin plan 2, Semanal 3, Mensual 5, Trimestral 6) y galería en la
+  ficha. El mecanismo es el mismo (copias locales y texto Base64 en Firestore).
+- Mensual y Trimestral: Facebook, Instagram y TikTok; comparación con el rubro en estadísticas.
+- Trimestral: oferta del día, sello «Negocio verificado» y aviso de vencimiento.
+- Todos los negocios: WhatsApp con mensaje «Hola, vi su negocio en LuciDan».
+- Panel de administración: marcar o quitar la verificación.
+- Room 13 -> 14: negocios.facebook, instagram, tiktok, ofertaTexto, ofertaHasta, verificado.
+- Firestore: viajan los seis campos nuevos. firestore.rules sin cambios.
+
+Archivos nuevos: util/ReglasPlan.kt, util/RedesSociales.kt, data/local/Migraciones.kt,
+notificaciones/AvisadorVencimiento.kt, ui/componentes/OfertaYSello.kt, ReglasPlanTest.kt, RedesSocialesTest.kt,
+MigracionTest.kt.
+Archivos modificados: BeneficiosPlan, Contacto, FotoNegocio, Negocio, AppDatabase, NegocioDao, EstadisticaDao,
+NegocioRepository, EstadisticaRepository, NubeService, NotificationService, NegocioViewModel, NegocioFormulario,
+EditarNegocioScreen, PanelNegocioScreen, DetalleScreen, HomeScreen, HomeViewModel, AdminScreen, AdminViewModel,
+EstadisticaUiState, EstadisticaViewModel, PanelEstadisticasScreen, PlanesScreen, BeneficiosPlanTest,
+app/build.gradle.kts, libs.versions.toml (sqlite-jdbc, solo para pruebas), CLAUDE.md.
+
+Decisiones:
+- Editar el perfil escribe en Firestore con merge, sin plan, estado ni verificado, para no pisar lo hecho en
+  otro teléfono.
+- Las fotos de un documento se reparten 900 000 caracteres (límite de Firestore: 1 MiB).
+- El aviso de vencimiento respeta «Desactivar notificaciones» y se envía una vez por período contratado.
+- Las redes que llegan de la nube solo se abren si son un enlace válido de su red.
+- Sin WorkManager: no se agregó la dependencia.
+
+Pruebas: 51 JUnit en verde y compilación debug correcta. La migración 13 -> 14 se probó en la JVM sobre SQLite y
+su esquema coincide con el que genera Room. Falta probar en teléfono y la sincronización entre dos teléfonos.
+
+============================================================================
 FIN DEL DOCUMENTO
 ============================================================================

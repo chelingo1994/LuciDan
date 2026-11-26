@@ -103,6 +103,11 @@ object FotoNegocio {
     private const val PREFIJO_DATOS = "data:image/jpeg;base64,"
     private const val LADO_NUBE = 800
     private const val MAX_TEXTO_NUBE = 600_000
+    private const val MAX_TEXTO_DOCUMENTO = 900_000
+
+    /** Con varias fotos el documento se reparte entre ellas; con una sola sigue el tope de siempre. */
+    fun maximoTextoPorFoto(cantidad: Int): Int =
+        minOf(MAX_TEXTO_NUBE, MAX_TEXTO_DOCUMENTO / cantidad.coerceAtLeast(1))
 
     @Volatile
     private var carpetaFotos: File? = null
@@ -113,7 +118,7 @@ object FotoNegocio {
     }
 
     /** Foto local (ruta de archivo) -> texto Base64 para Firestore; null si no existe o no cabe en el documento. */
-    fun aTextoParaNube(ruta: String): String? = runCatching {
+    fun aTextoParaNube(ruta: String, maximo: Int = MAX_TEXTO_NUBE): String? = runCatching {
         if (!File(ruta).exists()) return null
         val limites = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(ruta, limites)
@@ -133,9 +138,9 @@ object FotoNegocio {
             salida.reset()
             bitmap.compress(Bitmap.CompressFormat.JPEG, calidad, salida)
             calidad -= 10
-        } while (salida.size() * 4 / 3 > MAX_TEXTO_NUBE && calidad >= 30)
+        } while (salida.size() * 4 / 3 > maximo && calidad >= 30)
         bitmap.recycle()
-        if (salida.size() * 4 / 3 > MAX_TEXTO_NUBE) return null
+        if (salida.size() * 4 / 3 > maximo) return null
         PREFIJO_DATOS + android.util.Base64.encodeToString(salida.toByteArray(), android.util.Base64.NO_WRAP)
     }.onFailure { Log.w(TAG, "No se pudo convertir la foto $ruta", it) }.getOrNull()
 

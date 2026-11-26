@@ -1,6 +1,7 @@
 package dev.justinianomarcelo.lucidanapp.data.model
 
 import android.location.Location
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -28,7 +29,28 @@ data class Negocio(
     val promedioCalificacion: Double = 0.0,
     val estado: EstadoNegocio = EstadoNegocio.PENDIENTE,
     val destacado: Boolean = false,
-    val duenoId: String = ""
+    val duenoId: String = "",
+    /** Nivel del plan contratado (ver BeneficiosPlan); solo vale mientras [destacadoHasta] no pase. */
+    @ColumnInfo(defaultValue = "0")
+    val planNivel: Int = 0,
+    /** Vencimiento del plan en epoch ms; 0 = sin plan. */
+    @ColumnInfo(defaultValue = "0")
+    val destacadoHasta: Long = 0,
+    /** Enlaces normalizados (ver RedSocial); solo se muestran con un plan que incluya redes. */
+    @ColumnInfo(defaultValue = "")
+    val facebook: String = "",
+    @ColumnInfo(defaultValue = "")
+    val instagram: String = "",
+    @ColumnInfo(defaultValue = "")
+    val tiktok: String = "",
+    /** Oferta del día: texto corto y su vencimiento en epoch ms (ver Ofertas). */
+    @ColumnInfo(defaultValue = "")
+    val ofertaTexto: String = "",
+    @ColumnInfo(defaultValue = "0")
+    val ofertaHasta: Long = 0,
+    /** Lo marca el administrador; el sello solo se ve según Sello.visible. */
+    @ColumnInfo(defaultValue = "0")
+    val verificado: Boolean = false
 ) {
     /** Distancia en metros desde [latOrigen]/[lngOrigen] hasta este negocio. */
     fun calcularDistancia(latOrigen: Double, lngOrigen: Double): Double {
